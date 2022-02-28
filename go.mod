@@ -107,7 +107,7 @@ require (
 	istio.io/gogo-genproto v0.0.0-20201113182723-5b8563d8a012 // indirect
 	k8s.io/api v0.21.4
 	k8s.io/apiextensions-apiserver v0.21.4
-	k8s.io/apimachinery v0.21.4
+	k8s.io/apimachinery v0.23.3
 	k8s.io/apiserver v0.21.2
 	k8s.io/cli-runtime v0.21.2
 	k8s.io/client-go v12.0.0+incompatible
@@ -124,7 +124,7 @@ require (
 	kubesphere.io/monitoring-dashboard v0.2.2
 	rsc.io/letsencrypt v0.0.1 // indirect
 	sigs.k8s.io/application v0.8.4-0.20201016185654-c8e2959e57a0
-	sigs.k8s.io/controller-runtime v0.9.8-0.20211019125639-aa2b3e68a52d
+	sigs.k8s.io/controller-runtime v0.11.1
 	sigs.k8s.io/controller-tools v0.6.2
 	sigs.k8s.io/kubefed v0.8.1
 	sigs.k8s.io/kustomize/api v0.8.8
