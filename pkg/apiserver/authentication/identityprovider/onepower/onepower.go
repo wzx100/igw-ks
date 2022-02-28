@@ -2,7 +2,6 @@ package onepower
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"github.com/mitchellh/mapstructure"
 	"golang.org/x/oauth2"
@@ -13,9 +12,9 @@ import (
 )
 
 const (
-	userInfoURL = "https://api.github.com/user"
-	authURL     = "https://github.com/login/oauth/authorize"
-	tokenURL    = "https://github.com/login/oauth/access_token"
+	userInfoURL = "http://gzlwy.uat.internal.virtueit.net/v3/gateway/auth/v1.0.0/oauth/userInfo"
+	authURL     = "http://gzlwy.uat.internal.virtueit.net/v1/home/login"
+	tokenURL    = "http://gzlwy.uat.internal.virtueit.net/v3/gateway/auth/v1.0.0/oauth/token"
 )
 
 func init() {
@@ -57,11 +56,21 @@ type endpoint struct {
 }
 
 type onepowerIdentity struct {
-	AccountID string `json:"accountID"`
-	From      string `json:"from,omitempty"`
-	Nickname  string `json:"nickname,omitempty"`
+	Code    string               `json:"code"`
+	Message string               `json:"message"`
+	Data    onepowerIdentityData `json:"data"`
+	Success string               `json:"success"`
+}
+
+type onepowerIdentityData struct {
+	AccountID string `json:"accountName"`
+	Nickname  string `json:"userName,omitempty"`
 	Email     string `json:"email,omitempty"`
-	Mobile    string `json:"mobile,omitempty"`
+	Mobile    string `json:"tel,omitempty"`
+	//onepower中的id
+	OnepowerID string `json:"id"`
+	//租户ID
+	TenantId string `json:"tenantId"`
 }
 
 type onepowerProviderFactory struct {
@@ -106,35 +115,31 @@ func (o *onepowerProviderFactory) Create(options oauth.DynamicOptions) (identity
 }
 
 func (o onepowerIdentity) GetUserID() string {
-	return o.AccountID
+	return o.Data.OnepowerID
 }
 
 func (o onepowerIdentity) GetUsername() string {
-	return o.Nickname
+	if o.Data.Mobile != "" {
+		return o.Data.Mobile
+	} else {
+		return o.Data.AccountID
+	}
 }
 
 func (o onepowerIdentity) GetEmail() string {
-	return o.Email
+	return o.Data.Email
 }
 
 func (o *onepower) IdentityExchangeCallback(req *http.Request) (identityprovider.Identity, error) {
 	code := req.URL.Query().Get("code")
 	ctx := context.TODO()
-	if o.InsecureSkipVerify {
-		client := &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-				},
-			},
-		}
-		ctx = context.WithValue(ctx, oauth2.HTTPClient, client)
-	}
+
 	token, err := o.Config.Exchange(ctx, code)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := oauth2.NewClient(ctx, oauth2.StaticTokenSource(token)).Get(o.Endpoint.UserInfoURL)
+
+	resp, err := oauth2.NewClient(ctx, oauth2.StaticTokenSource(token)).Get(o.Endpoint.UserInfoURL + "?token=" + token.AccessToken)
 	if err != nil {
 		return nil, err
 	}

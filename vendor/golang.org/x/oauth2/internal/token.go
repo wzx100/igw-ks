@@ -59,6 +59,14 @@ type Token struct {
 // tokenJSON is the struct representing the HTTP response from OAuth2
 // providers returning a token in JSON form.
 type tokenJSON struct {
+	Code         string         `json:"code"`
+	Message      string         `json:"message"`
+	TokenData    tokenData      `json:"data"`
+	Sucess       string         `json:"sucess"`
+}
+
+type tokenData struct {
+	Scope        string        `json:"code"`
 	AccessToken  string         `json:"access_token"`
 	TokenType    string         `json:"token_type"`
 	RefreshToken string         `json:"refresh_token"`
@@ -66,7 +74,7 @@ type tokenJSON struct {
 }
 
 func (e *tokenJSON) expiry() (t time.Time) {
-	if v := e.ExpiresIn; v != 0 {
+	if v := e.TokenData.ExpiresIn; v != 0 {
 		return time.Now().Add(time.Duration(v) * time.Second)
 	}
 	return
@@ -270,9 +278,9 @@ func doTokenRoundTrip(ctx context.Context, req *http.Request) (*Token, error) {
 			return nil, err
 		}
 		token = &Token{
-			AccessToken:  tj.AccessToken,
-			TokenType:    tj.TokenType,
-			RefreshToken: tj.RefreshToken,
+			AccessToken:  tj.TokenData.AccessToken,
+			TokenType:    tj.TokenData.TokenType,
+			RefreshToken: tj.TokenData.RefreshToken,
 			Expiry:       tj.expiry(),
 			Raw:          make(map[string]interface{}),
 		}
