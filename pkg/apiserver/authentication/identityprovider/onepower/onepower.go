@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/mitchellh/mapstructure"
-	"golang.org/x/oauth2"
 	"io/ioutil"
 	"kubesphere.io/kubesphere/pkg/apiserver/authentication/identityprovider"
+	"kubesphere.io/kubesphere/pkg/apiserver/authentication/identityprovider/oauth2"
 	"kubesphere.io/kubesphere/pkg/apiserver/authentication/oauth"
 	"net/http"
 )
@@ -59,7 +59,6 @@ type onepowerIdentity struct {
 	Code    string               `json:"code"`
 	Message string               `json:"message"`
 	Data    onepowerIdentityData `json:"data"`
-	Success string               `json:"success"`
 }
 
 type onepowerIdentityData struct {
@@ -134,21 +133,46 @@ func (o *onepower) IdentityExchangeCallback(req *http.Request) (identityprovider
 	code := req.URL.Query().Get("code")
 	ctx := context.TODO()
 
+	//获取token
 	token, err := o.Config.Exchange(ctx, code)
 	if err != nil {
 		return nil, err
 	}
-
-	resp, err := oauth2.NewClient(ctx, oauth2.StaticTokenSource(token)).Get(o.Endpoint.UserInfoURL + "?token=" + token.AccessToken)
+	//?grant_type=authorization_code&client_id=bb183f7b4493484c9835140583199i8&client_secret=98719c9ffbc4ab19a8f575ab3641098&code=j71O
+	//tokenResp, err := http.Get(o.Endpoint.TokenURL + "?grant_type=authorization_code&client_id=" + o.ClientID+"&client_secret="+o.ClientSecret+"&code"+code)
+	//if err != nil {
+	//	return nil, fmt.Errorf("oauth2: cannot fetch token: %v", err)
+	//}
+	//
+	//body, err := ioutil.ReadAll(io.LimitReader(tokenResp.Body, 1<<20))
+	//defer tokenResp.Body.Close()
+	//
+	//var token *Token
+	//var tj tokenJSON
+	//if err = json.Unmarshal(body, &tj); err != nil {
+	//	return nil, err
+	//}
+	//token = &Token{
+	//	AccessToken:  tj.TokenData.AccessToken,
+	//	TokenType:    tj.TokenData.TokenType,
+	//	RefreshToken: tj.TokenData.RefreshToken,
+	//	Raw:          make(map[string]interface{}),
+	//}
+	//json.Unmarshal(body, &token.Raw) // no error checks for optional fields
+	//if token.AccessToken == "" {
+	//	return nil, fmt.Errorf("oauth2: server response missing access_token")
+	//}
+	userResp, err := oauth2.NewClient(ctx, oauth2.StaticTokenSource(token)).Get(o.Endpoint.UserInfoURL + "?token=" + token.AccessToken)
+	//userResp, err := http.Get(o.Endpoint.UserInfoURL + "?token=" + token.AccessToken)
 	if err != nil {
 		return nil, err
 	}
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := ioutil.ReadAll(userResp.Body)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer userResp.Body.Close()
 
 	var onepowerIdentity onepowerIdentity
 	err = json.Unmarshal(data, &onepowerIdentity)

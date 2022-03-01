@@ -1,0 +1,128 @@
+  alerting:
+    enabled: true
+  auditing:
+    enabled: true
+  authentication:
+    jwtSecret: ""
+    oauthOptions:
+      accessTokenInactivityTimeout: 30m
+      accessTokenMaxAge: 1h
+      identityProviders:
+      - mappingMethod: auto
+        name: github
+        provider:
+          clientID: 87a108790457419eb932d0b31d9aa090
+          clientSecret: a81919c9ffbc4abf13abb5ab364876af1
+          endpoint:
+            authURL: http://gzlwy.uat.internal.virtueit.net/v1/home/login
+            tokenURL: http://gzlwy.uat.internal.virtueit.net/v3/gateway/auth/v1.0.0/oauth/token
+          redirectURL: http://192.168.1.183:30880/oauth/redirect
+          scopes:
+          - user
+          userInfoUrl: http://gzlwy.uat.internal.virtueit.net/v3/gateway/auth/v1.0.0/oauth/userInfo
+        type: GitHubIdentityProvider
+  common:
+    core:
+      console:
+        enableMultiLogin: true
+        port: 30880
+        type: NodePort
+    es:
+      basicAuth:
+        enabled: false
+        password: ""
+        username: ""
+      elkPrefix: logstash
+      externalElasticsearchHost: ""
+      externalElasticsearchPort: ""
+      logMaxAge: 7
+    gpu:
+      kinds:
+      - default: true
+        resourceName: nvidia.com/gpu
+        resourceType: GPU
+    minio:
+      volumeSize: 20Gi
+    monitoring:
+      GPUMonitoring:
+        enabled: false
+      endpoint: http://prometheus-operated.kubesphere-monitoring-system.svc:9090
+    openldap:
+      enabled: false
+      volumeSize: 2Gi
+    redis:
+      enabled: false
+      volumeSize: 2Gi
+  devops:
+    enabled: false
+    jenkinsJavaOpts_MaxRAM: 2g
+    jenkinsJavaOpts_Xms: 512m
+    jenkinsJavaOpts_Xmx: 512m
+    jenkinsMemoryLim: 2Gi
+    jenkinsMemoryReq: 1500Mi
+    jenkinsVolumeSize: 8Gi
+  etcd:
+    endpointIps: 192.168.1.183
+    monitoring: false
+    port: 2379
+    tlsEnable: true
+  events:
+    enabled: true
+  kubeedge:
+    cloudCore:
+      cloudHub:
+        advertiseAddress:
+        - ""
+        nodeLimit: "100"
+      cloudhubHttpsPort: "10002"
+      cloudhubPort: "10000"
+      cloudhubQuicPort: "10001"
+      cloudstreamPort: "10003"
+      nodeSelector:
+        node-role.kubernetes.io/worker: ""
+      service:
+        cloudhubHttpsNodePort: "30002"
+        cloudhubNodePort: "30000"
+        cloudhubQuicNodePort: "30001"
+        cloudstreamNodePort: "30003"
+        tunnelNodePort: "30004"
+      tolerations: []
+      tunnelPort: "10004"
+    edgeWatcher:
+      edgeWatcherAgent:
+        nodeSelector:
+          node-role.kubernetes.io/worker: ""
+        tolerations: []
+      nodeSelector:
+        node-role.kubernetes.io/worker: ""
+      tolerations: []
+    enabled: true
+  logging:
+    containerruntime: docker
+    enabled: true
+    logsidecar:
+      enabled: true
+      replicas: 2
+  metrics_server:
+    enabled: true
+  monitoring:
+    gpu:
+      nvidia_dcgm_exporter:
+        enabled: false
+    storageClass: ""
+  multicluster:
+    clusterRole: host
+  network:
+    ippool:
+      type: calico
+    networkpolicy:
+      enabled: true
+    topology:
+      type: weave-scope
+  openpitrix:
+    store:
+      enabled: true
+  persistence:
+    storageClass: ""
+  servicemesh:
+    enabled: true

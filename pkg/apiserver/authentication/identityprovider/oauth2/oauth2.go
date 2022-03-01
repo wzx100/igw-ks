@@ -12,12 +12,11 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"kubesphere.io/kubesphere/pkg/apiserver/authentication/identityprovider/oauth2/internal"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
-
-	"golang.org/x/oauth2/internal"
 )
 
 // NoContext is the default context you should supply if not using
