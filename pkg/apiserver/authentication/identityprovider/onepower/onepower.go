@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	userInfoURL = "http://gzlwy.uat.internal.virtueit.net/v3/gateway/auth/v1.0.0/oauth/userInfo"
-	authURL     = "http://gzlwy.uat.internal.virtueit.net/v1/home/login"
-	tokenURL    = "http://gzlwy.uat.internal.virtueit.net/v3/gateway/auth/v1.0.0/oauth/token"
+	userInfoURL = "https://onepower.ft.industry-cmcc.com/v3/gateway/auth/v1.0.0/oauth/userInfo"
+	authURL     = "https://onepower.ft.industry-cmcc.com/login"
+	tokenURL    = "https://onepower.ft.industry-cmcc.com/v3/gateway/auth/v1.0.0/oauth/token"
 )
 
 func init() {
