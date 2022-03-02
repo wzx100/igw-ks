@@ -7,7 +7,7 @@ KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 source "${KUBE_ROOT}/hack/lib/init.sh"
 
 # push to kubesphere with default latest tag
-TAG=${TAG:-latest}
+TAG=${TAG:-latest-gxh}
 REPO=${REPO:-kubesphere}
 
 # If set, just building, no pushing
