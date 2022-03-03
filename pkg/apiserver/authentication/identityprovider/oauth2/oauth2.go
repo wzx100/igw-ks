@@ -11,6 +11,7 @@ package oauth2 // import "golang.org/x/oauth2"
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"kubesphere.io/kubesphere/pkg/apiserver/authentication/identityprovider/oauth2/internal"
 	"net/http"
@@ -339,14 +340,19 @@ var HTTPClient internal.ContextKey
 // using the provided context. This exists to support related OAuth2
 // packages.
 func NewClient(ctx context.Context, src TokenSource) *http.Client {
+	//跳过证书验证
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
 	if src == nil {
 		return internal.ContextClient(ctx)
 	}
 	return &http.Client{
-		Transport: &Transport{
-			Base:   internal.ContextClient(ctx).Transport,
-			Source: ReuseTokenSource(nil, src),
-		},
+		Transport: tr,
+		//Transport: &Transport{
+		//	Base:   internal.ContextClient(ctx).Transport,
+		//	Source: ReuseTokenSource(nil, src),
+		//},
 	}
 }
 
