@@ -20,7 +20,7 @@ type URLScheme interface {
 func NewDefaultURLScheme(base *url.URL) *DefaultURLScheme {
 	return &DefaultURLScheme{
 		base:                base,
-		LoginPath:           "login",
+		LoginPath:           "login134232",
 		LogoutPath:          "logout",
 		ValidatePath:        "validate",
 		ServiceValidatePath: "serviceValidate",
