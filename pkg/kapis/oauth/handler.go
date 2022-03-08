@@ -17,7 +17,9 @@ limitations under the License.
 package oauth
 
 import (
+	"context"
 	"fmt"
+	"kubesphere.io/kubesphere/pkg/apiserver/authentication/identityprovider/oauth2"
 	"net/http"
 	"net/url"
 	"strings"
@@ -56,6 +58,7 @@ const (
 	grantTypePassword     = "password"
 	grantTypeRefreshToken = "refresh_token"
 	grantTypeCode         = "code"
+	logoutUrl             = "https://onepower.ft.industry-cmcc.com/v3/gateway/auth/v1.0.0/oauth/logout"
 )
 
 type Spec struct {
@@ -647,6 +650,12 @@ func (h *handler) logout(req *restful.Request, resp *restful.Response) {
 	redirectURL, err := url.Parse(postLogoutRedirectURI)
 	if err != nil {
 		api.HandleBadRequest(resp, req, fmt.Errorf("invalid logout redirect URI: %s", err))
+		return
+	}
+	//调用op的接口
+	ctx := context.TODO()
+	_, err = oauth2.NewClient(ctx, oauth2.StaticTokenSource(token)).Get(logoutUrl + "?token=" + token.AccessToken)
+	if err != nil {
 		return
 	}
 
