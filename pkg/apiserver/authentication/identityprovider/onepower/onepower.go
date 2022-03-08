@@ -3,6 +3,7 @@ package onepower
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/mitchellh/mapstructure"
 	"io/ioutil"
 	"kubesphere.io/kubesphere/pkg/apiserver/authentication/identityprovider"
@@ -48,6 +49,8 @@ type onepower struct {
 	Scopes []string `json:"scopes" yaml:"scopes"`
 
 	Config *oauth2.Config `json:"-" yaml:"-"`
+
+	opAccessToken string
 }
 
 // endpoint represents an OAuth 2.0 provider's authorization and token
@@ -141,7 +144,8 @@ func (o *onepower) IdentityExchangeCallback(req *http.Request) (identityprovider
 	if err != nil {
 		return nil, err
 	}
-
+	o.opAccessToken = token.AccessToken
+	fmt.Println("onepower的opAccessToken为:", o.opAccessToken)
 	userResp, err := oauth2.NewClient(ctx, oauth2.StaticTokenSource(token)).Get(o.Endpoint.UserInfoURL + "?token=" + token.AccessToken)
 	if err != nil {
 		return nil, err
