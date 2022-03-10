@@ -21,6 +21,8 @@ const (
 	tokenURL    = "https://onepower.ft.industry-cmcc.com/v3/gateway/auth/v1.0.0/oauth/token"
 )
 
+var opTokenMap = make(map[string]string)
+
 func init() {
 	identityprovider.RegisterOAuthProvider(&onepowerProviderFactory{})
 }
@@ -49,8 +51,6 @@ type onepower struct {
 	Scopes []string `json:"scopes" yaml:"scopes"`
 
 	Config *oauth2.Config `json:"-" yaml:"-"`
-
-	opAccessToken string
 }
 
 // endpoint represents an OAuth 2.0 provider's authorization and token
@@ -135,6 +135,10 @@ func (o onepowerIdentity) GetEmail() string {
 	return o.Data.Email
 }
 
+func GetOpToken() string {
+	return opTokenMap["accessOpToekn"]
+}
+
 func (o *onepower) IdentityExchangeCallback(req *http.Request) (identityprovider.Identity, error) {
 	code := req.URL.Query().Get("code")
 	ctx := context.TODO()
@@ -144,8 +148,10 @@ func (o *onepower) IdentityExchangeCallback(req *http.Request) (identityprovider
 	if err != nil {
 		return nil, err
 	}
-	o.opAccessToken = token.AccessToken
-	fmt.Println("onepower的opAccessToken为:", o.opAccessToken)
+
+	//存储token值
+	opTokenMap["accessOpToekn"] = token.AccessToken
+	fmt.Println("OP单点登录跳转成功，token：" + token.AccessToken)
 	userResp, err := oauth2.NewClient(ctx, oauth2.StaticTokenSource(token)).Get(o.Endpoint.UserInfoURL + "?token=" + token.AccessToken)
 	if err != nil {
 		return nil, err
