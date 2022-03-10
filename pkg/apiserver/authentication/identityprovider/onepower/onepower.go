@@ -136,7 +136,7 @@ func (o onepowerIdentity) GetEmail() string {
 }
 
 func GetOpToken() string {
-	return opTokenMap["accessOpToekn"]
+	return opTokenMap["accessOpToken"]
 }
 
 func (o *onepower) IdentityExchangeCallback(req *http.Request) (identityprovider.Identity, error) {
@@ -150,7 +150,7 @@ func (o *onepower) IdentityExchangeCallback(req *http.Request) (identityprovider
 	}
 
 	//存储token值
-	opTokenMap["accessOpToekn"] = token.AccessToken
+	opTokenMap["accessOpToken"] = token.AccessToken
 	fmt.Println("OP单点登录跳转成功，token：" + token.AccessToken)
 	userResp, err := oauth2.NewClient(ctx, oauth2.StaticTokenSource(token)).Get(o.Endpoint.UserInfoURL + "?token=" + token.AccessToken)
 	if err != nil {
