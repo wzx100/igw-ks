@@ -51,16 +51,19 @@ func (d *usersGetter) List(_ string, query *query.Query) (*api.ListResult, error
 	var users []*iamv1alpha2.User
 	var err error
 
+	//项目
 	if namespace := query.Filters[iamv1alpha2.ScopeNamespace]; namespace != "" {
 		role := query.Filters[iamv1alpha2.ResourcesSingularRole]
 		users, err = d.listAllUsersInNamespace(string(namespace), string(role))
 		delete(query.Filters, iamv1alpha2.ScopeNamespace)
 		delete(query.Filters, iamv1alpha2.ResourcesSingularRole)
+		//企业空间
 	} else if workspace := query.Filters[iamv1alpha2.ScopeWorkspace]; workspace != "" {
 		workspaceRole := query.Filters[iamv1alpha2.ResourcesSingularWorkspaceRole]
 		users, err = d.listAllUsersInWorkspace(string(workspace), string(workspaceRole))
 		delete(query.Filters, iamv1alpha2.ScopeWorkspace)
 		delete(query.Filters, iamv1alpha2.ResourcesSingularWorkspaceRole)
+		//集群级别
 	} else if cluster := query.Filters[iamv1alpha2.ScopeCluster]; cluster == "true" {
 		clusterRole := query.Filters[iamv1alpha2.ResourcesSingularClusterRole]
 		users, err = d.listAllUsersInCluster(string(clusterRole))

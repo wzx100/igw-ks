@@ -44,9 +44,7 @@ type oauthAuthenticator struct {
 	options    *authentication.Options
 }
 
-func NewOAuthAuthenticator(ksClient kubesphere.Interface,
-	userLister iamv1alpha2listers.UserLister,
-	options *authentication.Options) OAuthAuthenticator {
+func NewOAuthAuthenticator(ksClient kubesphere.Interface, userLister iamv1alpha2listers.UserLister, options *authentication.Options) OAuthAuthenticator {
 	authenticator := &oauthAuthenticator{
 		ksClient:   ksClient,
 		userGetter: &userGetter{userLister: userLister},
