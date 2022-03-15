@@ -57,7 +57,6 @@ func (d *deploymentsGetter) List(namespace string, query *query.Query) (*api.Lis
 
 	var result []runtime.Object
 	for _, deployment := range deployments {
-		deployment.Name = strings.ToUpper(deployment.Name) + "====dd"
 		result = append(result, deployment)
 	}
 
