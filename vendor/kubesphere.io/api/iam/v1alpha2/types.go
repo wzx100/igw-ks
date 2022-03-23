@@ -117,6 +117,8 @@ type UserSpec struct {
 	// The preferred written or spoken language for the user.
 	// +optional
 	Lang string `json:"lang,omitempty"`
+	Sex int  `json:"sex"`
+	Cellphone string  `json:"cellphone,omitempty"`
 	// Description of the user.
 	// +optional
 	Description string `json:"description,omitempty"`

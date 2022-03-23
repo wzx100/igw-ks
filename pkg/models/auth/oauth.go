@@ -20,6 +20,7 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -71,7 +72,9 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 		return nil, "", err
 	}
 
-	user, err := o.userGetter.findMappedUser(providerOptions.Name, authenticated.GetUserID())
+	fmt.Println("========当前登录用户名AccountName为:", authenticated.GetUsername(), "==========")
+	user, err := o.userGetter.findUser(authenticated.GetUsername())
+	//user, err := o.userGetter.findMappedUser(providerOptions.Name, authenticated.GetUserID())
 	if user == nil && providerOptions.MappingMethod == oauth.MappingMethodLookup {
 		klog.Error(err)
 		return nil, "", err
@@ -82,6 +85,7 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 		if !providerOptions.DisableLoginConfirmation {
 			return preRegistrationUser(providerOptions.Name, authenticated), providerOptions.Name, nil
 		}
+		fmt.Println("========当前用户AccountName:", authenticated.GetUsername(), "在系统不存在==========")
 		user, err = o.ksClient.IamV1alpha2().Users().Create(context.Background(), mappedUser(providerOptions.Name, authenticated), metav1.CreateOptions{})
 		if err != nil {
 			return nil, providerOptions.Name, err

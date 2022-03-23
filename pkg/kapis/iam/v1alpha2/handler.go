@@ -17,18 +17,20 @@ limitations under the License.
 package v1alpha2
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"kubesphere.io/kubesphere/pkg/apiserver/authentication/identityprovider/onepower"
+	"net/http"
 	"strings"
-
-	authuser "k8s.io/apiserver/pkg/authentication/user"
-
-	"kubesphere.io/kubesphere/pkg/apiserver/request"
-	"kubesphere.io/kubesphere/pkg/models/auth"
 
 	"github.com/emicklei/go-restful"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	authuser "k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/klog"
+	"kubesphere.io/kubesphere/pkg/apiserver/request"
 
 	iamv1alpha2 "kubesphere.io/api/iam/v1alpha2"
 
@@ -46,6 +48,31 @@ type Member struct {
 	Username string `json:"username"`
 	RoleRef  string `json:"roleRef"`
 }
+type userCenterResp struct {
+	Code    string             `json:"code"`
+	Message string             `json:"msg"`
+	Data    userCenterRespData `json:"data"`
+	Success bool               `json:"success"`
+}
+
+type userCenterRespData struct {
+	Sex         string `json:"sex"`
+	AccountName string `json:"accountName"`
+	UserName    string `json:"userName"`
+	Cellphone   string `json:"cellphone"`
+	IsAdmin     string `json:"isAdmin"`
+	Status      string `json:"Status"`
+	//onepower中的id
+	OnepowerID string `json:"id"`
+	//租户ID
+	TenantId string `json:"tenantId"`
+}
+
+//const ChangePasswordUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4/portalcustomer/v1.0.0/user-center/userinfo/self/pwd"
+const ChangePasswordUrl = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo/self/pwd"
+
+//const CreateUserUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4/portalcustomer/v1.0.0/user-center/userinfo"
+const CreateUserUrl = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo"
 
 type GroupMember struct {
 	UserName  string `json:"userName"`
@@ -491,6 +518,7 @@ func (h *iamHandler) DeleteWorkspaceRole(request *restful.Request, response *res
 func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 	var user iamv1alpha2.User
 	err := req.ReadEntity(&user)
+	user.Spec.EncryptedPassword = "China@2022"
 	if err != nil {
 		api.HandleBadRequest(resp, req, err)
 		return
@@ -521,7 +549,80 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 			return
 		}
 	}
+	if onepower.GetTenantId() == "" || onepower.GetCustomerId() == "" || onepower.GetDeptId() == "" {
+		fmt.Println("==========新增用户,获取当前登录用户为空===========")
+		api.HandleError(resp, req, fmt.Errorf("==========新增用户,获取当前登录用户为空==========="))
+		return
+	}
+	fmt.Println("========originalTenantId:", onepower.GetTenantId(), ",originalCustomerId:", onepower.GetCustomerId(), ",deptId:", onepower.GetDeptId(), "==============")
+	//调用op新增用户接口
+	//JSON序列化
+	config := map[string]interface{}{}
+	//默认为非管理员
+	config["isAdmin"] = 0
+	//状态为启用
+	config["status"] = 1
+	//状态为启用
+	config["deptId"] = onepower.GetDeptId()
+	//config["deptId"] = "1329701508497645570"
 
+	if user.ObjectMeta.Name != "" {
+		config["userName"] = user.ObjectMeta.Name
+		config["accountName"] = user.ObjectMeta.Name
+	}
+	config["sex"] = user.Spec.Sex
+	config["cellphone"] = user.Spec.Cellphone
+
+	configData, _ := json.Marshal(config)
+	param := bytes.NewBuffer([]byte(configData))
+	// only the user manager can modify the password without verifying the old password
+	// if old password is defined must be verified
+
+	opCreateReq, err := http.NewRequest("POST", CreateUserUrl, param)
+	if err != nil {
+		api.HandleInternalError(resp, req, err)
+		return
+	}
+	opCreateReq.Header.Set("Content-Type", "application/json")
+	opCreateReq.Header.Set("customer_id", onepower.GetCustomerId())
+	//opCreateReq.Header.Set("customer_id", "739865515899486208")
+	opCreateReq.Header.Set("tenant_id", onepower.GetTenantId())
+	//opCreateReq.Header.Set("tenant_id", "1329701507709116418")
+
+	defer opCreateReq.Body.Close()
+	client := http.Client{}
+	opResp, err := client.Do(opCreateReq) //Do 方法发送请求，返回 HTTP 回复
+	if err != nil {
+		fmt.Println("=========调用op新增用户接口异常======", err.Error())
+		api.HandleInternalError(resp, req, err)
+		return
+	}
+	data, err := ioutil.ReadAll(opResp.Body)
+	if err != nil {
+		api.HandleInternalError(resp, req, err)
+		return
+	}
+	defer opResp.Body.Close()
+	var userResp userCenterResp
+	err = json.Unmarshal(data, &userResp)
+	//if err != nil {
+	//	api.HandleInternalError(resp, req, err)
+	//	return
+	//}
+	if userResp.Success == false {
+		var errorMessage string
+		if userResp.Message != "" {
+			errorMessage = userResp.Message
+		} else {
+			jsonByte, _ := json.Marshal(userResp.Data)
+			errorMessage = string(jsonByte)
+		}
+		fmt.Println("调用op新增用户接口失败:", errorMessage)
+
+		err = errors.NewInternalError(fmt.Errorf(errorMessage))
+		api.HandleInternalError(resp, req, err)
+		return
+	}
 	created, err := h.im.CreateUser(&user)
 	if err != nil {
 		api.HandleError(resp, req, err)
@@ -581,7 +682,7 @@ func (h *iamHandler) UpdateUser(request *restful.Request, response *restful.Resp
 }
 
 func (h *iamHandler) ModifyPassword(request *restful.Request, response *restful.Response) {
-	username := request.PathParameter("user")
+	//username := request.PathParameter("user")
 	var passwordReset PasswordReset
 	err := request.ReadEntity(&passwordReset)
 	if err != nil {
@@ -611,22 +712,60 @@ func (h *iamHandler) ModifyPassword(request *restful.Request, response *restful.
 		return
 	}
 
+	//JSON序列化
+	config := map[string]interface{}{}
+	if passwordReset.CurrentPassword != "" {
+		config["password"] = passwordReset.CurrentPassword
+	}
+	if passwordReset.Password != "" {
+		config["newPassword"] = passwordReset.Password
+		config["newPasswordRepeat"] = passwordReset.Password
+	}
+	configData, _ := json.Marshal(config)
+	param := bytes.NewBuffer([]byte(configData))
 	// only the user manager can modify the password without verifying the old password
 	// if old password is defined must be verified
 	if decision != authorizer.DecisionAllow || passwordReset.CurrentPassword != "" {
-		if err = h.im.PasswordVerify(username, passwordReset.CurrentPassword); err != nil {
-			if err == auth.IncorrectPasswordError {
-				err = errors.NewBadRequest("incorrect old password")
-			}
-			api.HandleError(response, request, err)
+		opChangePwdReq, err := http.NewRequest("POST", ChangePasswordUrl, param)
+		if err != nil {
+			api.HandleInternalError(response, request, err)
 			return
 		}
-	}
+		opChangePwdReq.Header.Set("Content-Type", "application/json")
+		if onepower.GetTenantId() == "" || onepower.GetCustomerId() == "" {
+			fmt.Println("==========修改免密,获取当前登录用户为空===========")
+			api.HandleError(response, request, fmt.Errorf("==========修改密码,获取当前登录用户为空==========="))
+			return
+		}
+		opChangePwdReq.Header.Set("customer_id", onepower.GetCustomerId())
+		opChangePwdReq.Header.Set("tenant_id", onepower.GetTenantId())
 
-	err = h.im.ModifyPassword(username, passwordReset.Password)
-	if err != nil {
-		api.HandleError(response, request, err)
-		return
+		defer opChangePwdReq.Body.Close()
+		client := http.Client{}
+		resp, err := client.Do(opChangePwdReq) //Do 方法发送请求，返回 HTTP 回复
+		if err != nil {
+			fmt.Println("=========调用op修改密码接口异常======", err.Error())
+			api.HandleInternalError(response, request, err)
+			return
+		}
+		data, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			api.HandleInternalError(response, request, err)
+			return
+		}
+		defer resp.Body.Close()
+		var userResp userCenterResp
+		err = json.Unmarshal(data, &userResp)
+		if err != nil {
+			api.HandleInternalError(response, request, err)
+			return
+		}
+		if userResp.Success == false {
+			fmt.Println("调用op修改密码接口失败:", userResp.Message)
+			err = errors.NewInternalError(fmt.Errorf(userResp.Message))
+			api.HandleInternalError(response, request, err)
+			return
+		}
 	}
 
 	response.WriteEntity(servererr.None)

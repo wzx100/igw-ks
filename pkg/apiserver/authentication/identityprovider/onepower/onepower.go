@@ -75,7 +75,10 @@ type onepowerIdentityData struct {
 	//onepower中的id
 	OnepowerID string `json:"id"`
 	//租户ID
-	TenantId string `json:"tenantId"`
+	TenantId         string `json:"tenantId"`
+	OriginalUserId   string `json:"originalUserId"`
+	OriginalTenantId string `json:"originalTenantId"`
+	OriginalDeptId   string `json:"originalDeptId"`
 }
 
 type onepowerProviderFactory struct {
@@ -124,10 +127,10 @@ func (o onepowerIdentity) GetUserID() string {
 }
 
 func (o onepowerIdentity) GetUsername() string {
-	if o.Data.Mobile != "" {
-		return o.Data.Mobile
-	} else {
+	if o.Data.AccountID != "" {
 		return o.Data.AccountID
+	} else {
+		return o.Data.Mobile
 	}
 }
 
@@ -137,6 +140,15 @@ func (o onepowerIdentity) GetEmail() string {
 
 func GetOpToken() string {
 	return opTokenMap["accessOpToken"]
+}
+func GetCustomerId() string {
+	return opTokenMap["customerId"]
+}
+func GetDeptId() string {
+	return opTokenMap["deptId"]
+}
+func GetTenantId() string {
+	return opTokenMap["tenantId"]
 }
 
 func (o *onepower) IdentityExchangeCallback(req *http.Request) (identityprovider.Identity, error) {
@@ -151,6 +163,7 @@ func (o *onepower) IdentityExchangeCallback(req *http.Request) (identityprovider
 
 	//存储token值
 	opTokenMap["accessOpToken"] = token.AccessToken
+
 	fmt.Println("OP单点登录跳转成功，token：" + token.AccessToken)
 	userResp, err := oauth2.NewClient(ctx, oauth2.StaticTokenSource(token)).Get(o.Endpoint.UserInfoURL + "?token=" + token.AccessToken)
 	if err != nil {
@@ -165,6 +178,14 @@ func (o *onepower) IdentityExchangeCallback(req *http.Request) (identityprovider
 
 	var onepowerIdentity onepowerIdentity
 	err = json.Unmarshal(data, &onepowerIdentity)
+	fmt.Println("=====customerId为:", onepowerIdentity.Data.OriginalUserId, "===========")
+	fmt.Println("=====tenantId为:", onepowerIdentity.Data.OriginalTenantId, "===========")
+	fmt.Println("=====deptId为:", onepowerIdentity.Data.OriginalDeptId, "===========")
+
+	opTokenMap["customerId"] = onepowerIdentity.Data.OriginalUserId
+	opTokenMap["tenantId"] = onepowerIdentity.Data.OriginalTenantId
+	opTokenMap["deptId"] = onepowerIdentity.Data.OriginalDeptId
+
 	if err != nil {
 		return nil, err
 	}
