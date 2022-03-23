@@ -22,8 +22,17 @@ spec:
     - jsonPath: .spec.email
       name: Email
       type: string
+    - jsonPath: .spec.sex
+      name: Sex
+      type: int
+    - jsonPath: .spec.cellphone
+      name: Cellphone
+      type: string
     - jsonPath: .status.state
       name: Status
+      type: string
+    - jsonPath: .spec.opuid
+      name: Opuid
       type: string
     name: v1alpha2
     schema:
@@ -50,6 +59,12 @@ spec:
                 type: string
               displayName:
                 type: string
+              opuid:
+                type: string
+              cellphone:
+                type: string
+              sex:
+                type: int
               email:
                 description: Unique email address(https://www.ietf.org/rfc/rfc5322.txt).
                 type: string

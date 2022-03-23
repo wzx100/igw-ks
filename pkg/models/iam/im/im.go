@@ -18,6 +18,7 @@ package im
 import (
 	"context"
 	"fmt"
+	iamv1alpha1 "kubesphere.io/kubesphere/staging/src/kubesphere.io/api/iam/v1alpha2"
 
 	"kubesphere.io/kubesphere/pkg/apiserver/authentication"
 
@@ -34,11 +35,11 @@ import (
 )
 
 type IdentityManagementInterface interface {
-	CreateUser(user *iamv1alpha2.User) (*iamv1alpha2.User, error)
+	CreateUser(user *iamv1alpha1.User) (*iamv1alpha1.User, error)
 	ListUsers(query *query.Query) (*api.ListResult, error)
 	DeleteUser(username string) error
-	UpdateUser(user *iamv1alpha2.User) (*iamv1alpha2.User, error)
-	DescribeUser(username string) (*iamv1alpha2.User, error)
+	UpdateUser(user *iamv1alpha1.User) (*iamv1alpha1.User, error)
+	DescribeUser(username string) (*iamv1alpha1.User, error)
 	ModifyPassword(username string, password string) error
 	ListLoginRecords(username string, query *query.Query) (*api.ListResult, error)
 	PasswordVerify(username string, password string) error
@@ -62,7 +63,7 @@ type imOperator struct {
 }
 
 // UpdateUser returns user information after update.
-func (im *imOperator) UpdateUser(new *iamv1alpha2.User) (*iamv1alpha2.User, error) {
+func (im *imOperator) UpdateUser(new *iamv1alpha1.User) (*iamv1alpha1.User, error) {
 	old, err := im.fetch(new.Name)
 	if err != nil {
 		klog.Error(err)
@@ -79,13 +80,13 @@ func (im *imOperator) UpdateUser(new *iamv1alpha2.User) (*iamv1alpha2.User, erro
 	return ensurePasswordNotOutput(updated), nil
 }
 
-func (im *imOperator) fetch(username string) (*iamv1alpha2.User, error) {
+func (im *imOperator) fetch(username string) (*iamv1alpha1.User, error) {
 	obj, err := im.userGetter.Get("", username)
 	if err != nil {
 		klog.Error(err)
 		return nil, err
 	}
-	user := obj.(*iamv1alpha2.User).DeepCopy()
+	user := obj.(*iamv1alpha1.User).DeepCopy()
 	return user, nil
 }
 
@@ -112,7 +113,7 @@ func (im *imOperator) ListUsers(query *query.Query) (result *api.ListResult, err
 	}
 	items := make([]interface{}, 0)
 	for _, item := range result.Items {
-		user := item.(*iamv1alpha2.User)
+		user := item.(*iamv1alpha1.User)
 		out := ensurePasswordNotOutput(user)
 		items = append(items, out)
 	}
@@ -126,20 +127,20 @@ func (im *imOperator) PasswordVerify(username string, password string) error {
 		klog.Error(err)
 		return err
 	}
-	user := obj.(*iamv1alpha2.User)
+	user := obj.(*iamv1alpha1.User)
 	if err = auth.PasswordVerify(user.Spec.EncryptedPassword, password); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (im *imOperator) DescribeUser(username string) (*iamv1alpha2.User, error) {
+func (im *imOperator) DescribeUser(username string) (*iamv1alpha1.User, error) {
 	obj, err := im.userGetter.Get("", username)
 	if err != nil {
 		klog.Error(err)
 		return nil, err
 	}
-	user := obj.(*iamv1alpha2.User)
+	user := obj.(*iamv1alpha1.User)
 	return ensurePasswordNotOutput(user), nil
 }
 
@@ -147,7 +148,7 @@ func (im *imOperator) DeleteUser(username string) error {
 	return im.ksClient.IamV1alpha2().Users().Delete(context.Background(), username, *metav1.NewDeleteOptions(0))
 }
 
-func (im *imOperator) CreateUser(user *iamv1alpha2.User) (*iamv1alpha2.User, error) {
+func (im *imOperator) CreateUser(user *iamv1alpha1.User) (*iamv1alpha1.User, error) {
 	user, err := im.ksClient.IamV1alpha2().Users().Create(context.Background(), user, metav1.CreateOptions{})
 	if err != nil {
 		klog.Error(err)
@@ -166,7 +167,7 @@ func (im *imOperator) ListLoginRecords(username string, q *query.Query) (*api.Li
 	return result, nil
 }
 
-func ensurePasswordNotOutput(user *iamv1alpha2.User) *iamv1alpha2.User {
+func ensurePasswordNotOutput(user *iamv1alpha1.User) *iamv1alpha1.User {
 	out := user.DeepCopy()
 	// ensure encrypted password will not be output
 	out.Spec.EncryptedPassword = ""
