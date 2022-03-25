@@ -21,9 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	iamv1alpha2 "kubesphere.io/api/iam/v1alpha2"
-	iamv1alpha1 "kubesphere.io/kubesphere/staging/src/kubesphere.io/api/iam/v1alpha2"
-
 	"kubesphere.io/kubesphere/pkg/apiserver/authentication/identityprovider/onepower"
 	"net/http"
 	"strings"
@@ -34,6 +31,8 @@ import (
 	authuser "k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/klog"
 	"kubesphere.io/kubesphere/pkg/apiserver/request"
+
+	iamv1alpha2 "kubesphere.io/api/iam/v1alpha2"
 
 	"kubesphere.io/kubesphere/pkg/api"
 	"kubesphere.io/kubesphere/pkg/apiserver/authorization/authorizer"
@@ -295,7 +294,7 @@ func (h *iamHandler) ListUsers(request *restful.Request, response *restful.Respo
 		return
 	}
 	for i, item := range result.Items {
-		user := item.(*iamv1alpha1.User)
+		user := item.(*iamv1alpha2.User)
 		user = user.DeepCopy()
 		globalRole, err := h.am.GetGlobalRoleOfUser(user.Name)
 		// ignore not found error
@@ -311,7 +310,7 @@ func (h *iamHandler) ListUsers(request *restful.Request, response *restful.Respo
 	response.WriteEntity(result)
 }
 
-func appendGlobalRoleAnnotation(user *iamv1alpha1.User, globalRole string) *iamv1alpha1.User {
+func appendGlobalRoleAnnotation(user *iamv1alpha2.User, globalRole string) *iamv1alpha2.User {
 	if user.Annotations == nil {
 		user.Annotations = make(map[string]string, 0)
 	}
@@ -517,7 +516,7 @@ func (h *iamHandler) DeleteWorkspaceRole(request *restful.Request, response *res
 }
 
 func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
-	var user iamv1alpha1.User
+	var user iamv1alpha2.User
 	err := req.ReadEntity(&user)
 	user.Spec.EncryptedPassword = "China@2022"
 	if err != nil {
@@ -550,7 +549,6 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 			return
 		}
 	}
-	/**
 	if onepower.GetTenantId() == "" || onepower.GetCustomerId() == "" || onepower.GetDeptId() == "" {
 		fmt.Println("==========新增用户,获取当前登录用户为空===========")
 		api.HandleError(resp, req, fmt.Errorf("==========新增用户,获取当前登录用户为空==========="))
@@ -624,7 +622,7 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 		err = errors.NewInternalError(fmt.Errorf(errorMessage))
 		api.HandleInternalError(resp, req, err)
 		return
-	}*/
+	}
 	created, err := h.im.CreateUser(&user)
 	if err != nil {
 		api.HandleError(resp, req, err)
@@ -647,7 +645,7 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 func (h *iamHandler) UpdateUser(request *restful.Request, response *restful.Response) {
 	username := request.PathParameter("user")
 
-	var user iamv1alpha1.User
+	var user iamv1alpha2.User
 
 	err := request.ReadEntity(&user)
 	if err != nil {
@@ -1332,7 +1330,7 @@ func (h *iamHandler) PatchClusterRole(request *restful.Request, response *restfu
 	response.WriteEntity(patched)
 }
 
-func (h *iamHandler) updateGlobalRoleBinding(operator authuser.Info, user *iamv1alpha1.User, globalRole string) error {
+func (h *iamHandler) updateGlobalRoleBinding(operator authuser.Info, user *iamv1alpha2.User, globalRole string) error {
 
 	oldGlobalRole, err := h.am.GetGlobalRoleOfUser(user.Name)
 	if err != nil && !errors.IsNotFound(err) {

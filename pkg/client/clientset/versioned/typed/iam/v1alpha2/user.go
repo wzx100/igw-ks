@@ -20,13 +20,14 @@ package v1alpha2
 
 import (
 	"context"
+	"time"
+
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	rest "k8s.io/client-go/rest"
+	v1alpha2 "kubesphere.io/api/iam/v1alpha2"
 	scheme "kubesphere.io/kubesphere/pkg/client/clientset/versioned/scheme"
-	iamv1alpha1 "kubesphere.io/kubesphere/staging/src/kubesphere.io/api/iam/v1alpha2"
-	"time"
 )
 
 // UsersGetter has a method to return a UserInterface.
@@ -37,15 +38,15 @@ type UsersGetter interface {
 
 // UserInterface has methods to work with User resources.
 type UserInterface interface {
-	Create(ctx context.Context, user *iamv1alpha1.User, opts v1.CreateOptions) (*iamv1alpha1.User, error)
-	Update(ctx context.Context, user *iamv1alpha1.User, opts v1.UpdateOptions) (*iamv1alpha1.User, error)
-	UpdateStatus(ctx context.Context, user *iamv1alpha1.User, opts v1.UpdateOptions) (*iamv1alpha1.User, error)
+	Create(ctx context.Context, user *v1alpha2.User, opts v1.CreateOptions) (*v1alpha2.User, error)
+	Update(ctx context.Context, user *v1alpha2.User, opts v1.UpdateOptions) (*v1alpha2.User, error)
+	UpdateStatus(ctx context.Context, user *v1alpha2.User, opts v1.UpdateOptions) (*v1alpha2.User, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*iamv1alpha1.User, error)
-	List(ctx context.Context, opts v1.ListOptions) (*iamv1alpha1.UserList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha2.User, error)
+	List(ctx context.Context, opts v1.ListOptions) (*v1alpha2.UserList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *iamv1alpha1.User, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha2.User, err error)
 	UserExpansion
 }
 
@@ -62,8 +63,8 @@ func newUsers(c *IamV1alpha2Client) *users {
 }
 
 // Get takes name of the user, and returns the corresponding user object, and an error if there is any.
-func (c *users) Get(ctx context.Context, name string, options v1.GetOptions) (result *iamv1alpha1.User, err error) {
-	result = &iamv1alpha1.User{}
+func (c *users) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha2.User, err error) {
+	result = &v1alpha2.User{}
 	err = c.client.Get().
 		Resource("users").
 		Name(name).
@@ -74,12 +75,12 @@ func (c *users) Get(ctx context.Context, name string, options v1.GetOptions) (re
 }
 
 // List takes label and field selectors, and returns the list of Users that match those selectors.
-func (c *users) List(ctx context.Context, opts v1.ListOptions) (result *iamv1alpha1.UserList, err error) {
+func (c *users) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha2.UserList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
-	result = &iamv1alpha1.UserList{}
+	result = &v1alpha2.UserList{}
 	err = c.client.Get().
 		Resource("users").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -104,8 +105,8 @@ func (c *users) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface
 }
 
 // Create takes the representation of a user and creates it.  Returns the server's representation of the user, and an error, if there is any.
-func (c *users) Create(ctx context.Context, user *iamv1alpha1.User, opts v1.CreateOptions) (result *iamv1alpha1.User, err error) {
-	result = &iamv1alpha1.User{}
+func (c *users) Create(ctx context.Context, user *v1alpha2.User, opts v1.CreateOptions) (result *v1alpha2.User, err error) {
+	result = &v1alpha2.User{}
 	err = c.client.Post().
 		Resource("users").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -116,8 +117,8 @@ func (c *users) Create(ctx context.Context, user *iamv1alpha1.User, opts v1.Crea
 }
 
 // Update takes the representation of a user and updates it. Returns the server's representation of the user, and an error, if there is any.
-func (c *users) Update(ctx context.Context, user *iamv1alpha1.User, opts v1.UpdateOptions) (result *iamv1alpha1.User, err error) {
-	result = &iamv1alpha1.User{}
+func (c *users) Update(ctx context.Context, user *v1alpha2.User, opts v1.UpdateOptions) (result *v1alpha2.User, err error) {
+	result = &v1alpha2.User{}
 	err = c.client.Put().
 		Resource("users").
 		Name(user.Name).
@@ -130,8 +131,8 @@ func (c *users) Update(ctx context.Context, user *iamv1alpha1.User, opts v1.Upda
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *users) UpdateStatus(ctx context.Context, user *iamv1alpha1.User, opts v1.UpdateOptions) (result *iamv1alpha1.User, err error) {
-	result = &iamv1alpha1.User{}
+func (c *users) UpdateStatus(ctx context.Context, user *v1alpha2.User, opts v1.UpdateOptions) (result *v1alpha2.User, err error) {
+	result = &v1alpha2.User{}
 	err = c.client.Put().
 		Resource("users").
 		Name(user.Name).
@@ -169,8 +170,8 @@ func (c *users) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, lis
 }
 
 // Patch applies the patch and returns the patched user.
-func (c *users) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *iamv1alpha1.User, err error) {
-	result = &iamv1alpha1.User{}
+func (c *users) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha2.User, err error) {
+	result = &v1alpha2.User{}
 	err = c.client.Patch(pt).
 		Resource("users").
 		Name(name).
