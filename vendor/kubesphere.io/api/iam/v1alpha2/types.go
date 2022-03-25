@@ -119,6 +119,8 @@ type UserSpec struct {
 	Lang string `json:"lang,omitempty"`
 	Sex int  `json:"sex"`
 	Cellphone string  `json:"cellphone,omitempty"`
+	Opuid     string   `json:"opuid,omitempty"`
+
 	// Description of the user.
 	// +optional
 	Description string `json:"description,omitempty"`
