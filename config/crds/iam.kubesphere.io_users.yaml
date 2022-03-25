@@ -64,7 +64,7 @@ spec:
               cellphone:
                 type: string
               sex:
-                type: int
+                type: integer
               email:
                 description: Unique email address(https://www.ietf.org/rfc/rfc5322.txt).
                 type: string
