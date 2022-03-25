@@ -117,17 +117,16 @@ type UserSpec struct {
 	// The preferred written or spoken language for the user.
 	// +optional
 	Lang string `json:"lang,omitempty"`
-	Sex int  `json:"sex"`
-	Cellphone string  `json:"cellphone,omitempty"`
-	Opuid     string   `json:"opuid,omitempty"`
-
 	// Description of the user.
 	// +optional
 	Description string `json:"description,omitempty"`
 	// +optional
 	DisplayName string `json:"displayName,omitempty"`
 	// +optional
-	Groups []string `json:"groups,omitempty"`
+	Groups    []string `json:"groups,omitempty"`
+	Sex       int      `json:"sex"`
+	Cellphone string   `json:"cellphone,omitempty"`
+	Opuid     string   `json:"opuid,omitempty"`
 
 	// password will be encrypted by mutating admission webhook
 	// +kubebuilder:validation:MinLength=6
