@@ -783,11 +783,21 @@ func (h *iamHandler) DeleteUser(request *restful.Request, response *restful.Resp
 			fmt.Println("========获取用户的opuid为:", opuid, "==============")
 			//调用op的删除用户接口
 			deleteUrl := DeleteUserUrl + "/" + opuid
-			opDeleteUserReq, err := http.NewRequest("GET", deleteUrl, nil)
+			opDeleteUserReq, err := http.NewRequest("POST", deleteUrl, nil)
 			if err != nil {
 				api.HandleInternalError(response, request, err)
 				return
 			}
+			opDeleteUserReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			if onepower.GetTenantId() == "" || onepower.GetCustomerId() == "" {
+				fmt.Println("==========删除用户,获取当前登录用户为空===========")
+				api.HandleError(response, request, fmt.Errorf("==========删除用户,获取当前登录用户为空==========="))
+				return
+			}
+			opDeleteUserReq.Header.Set("customer_id", onepower.GetCustomerId())
+			//opDeleteUserReq.Header.Set("customer_id", "739865515899486208")
+			opDeleteUserReq.Header.Set("tenant_id", onepower.GetTenantId())
+			//opDeleteUserReq.Header.Set("tenant_id", "1329701507709116418")
 			client := http.Client{}
 			resp, err := client.Do(opDeleteUserReq) //Do 方法发送请求，返回 HTTP 回复
 			if err != nil {
