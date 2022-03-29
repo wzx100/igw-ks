@@ -82,7 +82,10 @@ func mappedUser(idp string, identity identityprovider.Identity) *iamv1alpha2.Use
 				iamv1alpha2.OriginUIDLabel:        identity.GetUserID(),
 			},
 		},
-		Spec: iamv1alpha2.UserSpec{Email: identity.GetEmail()},
+		Spec: iamv1alpha2.UserSpec{
+			Email: identity.GetEmail(),
+			Opuid: identity.GetOpuid(),
+		},
 	}
 }
 

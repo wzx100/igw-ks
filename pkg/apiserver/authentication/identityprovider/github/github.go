@@ -166,6 +166,9 @@ func (g githubIdentity) GetUsername() string {
 func (g githubIdentity) GetEmail() string {
 	return g.Email
 }
+func (g githubIdentity) GetOpuid() string {
+	return ""
+}
 
 func (g *github) IdentityExchangeCallback(req *http.Request) (identityprovider.Identity, error) {
 	// OAuth2 callback, see also https://tools.ietf.org/html/rfc6749#section-4.1.2

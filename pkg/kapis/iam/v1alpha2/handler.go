@@ -73,6 +73,7 @@ const ChangePasswordUrl = "http://coreop.ft.internal.virtueit.net/v4/portalcusto
 
 //const CreateUserUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4/portalcustomer/v1.0.0/user-center/userinfo"
 const CreateUserUrl = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo"
+const DeleteUserUrl = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo/delete"
 
 type GroupMember struct {
 	UserName  string `json:"userName"`
@@ -549,6 +550,7 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 			return
 		}
 	}
+
 	if onepower.GetTenantId() == "" || onepower.GetCustomerId() == "" || onepower.GetDeptId() == "" {
 		fmt.Println("==========新增用户,获取当前登录用户为空===========")
 		api.HandleError(resp, req, fmt.Errorf("==========新增用户,获取当前登录用户为空==========="))
@@ -774,6 +776,47 @@ func (h *iamHandler) ModifyPassword(request *restful.Request, response *restful.
 func (h *iamHandler) DeleteUser(request *restful.Request, response *restful.Response) {
 	username := request.PathParameter("user")
 
+	user, _ := h.im.DescribeUser(username)
+	if user != nil {
+		opuid := user.Spec.Opuid
+		if opuid != "" {
+			fmt.Println("========获取用户的opuid为:", opuid, "==============")
+			//调用op的删除用户接口
+			deleteUrl := DeleteUserUrl + "/" + opuid
+			opDeleteUserReq, err := http.NewRequest("GET", deleteUrl, nil)
+			if err != nil {
+				api.HandleInternalError(response, request, err)
+				return
+			}
+			client := http.Client{}
+			resp, err := client.Do(opDeleteUserReq) //Do 方法发送请求，返回 HTTP 回复
+			if err != nil {
+				fmt.Println("=========调用op删除用户接口异常======", err.Error())
+				api.HandleInternalError(response, request, err)
+				return
+			}
+			data, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				api.HandleInternalError(response, request, err)
+				return
+			}
+			defer resp.Body.Close()
+			var userResp userCenterResp
+			err = json.Unmarshal(data, &userResp)
+			if err != nil {
+				api.HandleInternalError(response, request, err)
+				return
+			}
+			if userResp.Success == false {
+				fmt.Println("调用op删除用户接口失败:", userResp.Message)
+				err = errors.NewInternalError(fmt.Errorf(userResp.Message))
+				api.HandleInternalError(response, request, err)
+				return
+			}
+
+		}
+
+	}
 	err := h.im.DeleteUser(username)
 	if err != nil {
 		api.HandleError(response, request, err)

@@ -125,6 +125,9 @@ func (o oidcIdentity) GetUsername() string {
 func (o oidcIdentity) GetEmail() string {
 	return o.Email
 }
+func (o oidcIdentity) GetOpuid() string {
+	return ""
+}
 
 type oidcProviderFactory struct {
 }

@@ -58,6 +58,9 @@ func (c casIdentity) GetUsername() string {
 func (c casIdentity) GetEmail() string {
 	return ""
 }
+func (c casIdentity) GetOpuid() string {
+	return ""
+}
 
 func (f casProviderFactory) Type() string {
 	return "CASIdentityProvider"

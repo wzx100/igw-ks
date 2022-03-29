@@ -125,6 +125,9 @@ func (o *onepowerProviderFactory) Create(options oauth.DynamicOptions) (identity
 func (o onepowerIdentity) GetUserID() string {
 	return o.Data.OnepowerID
 }
+func (o onepowerIdentity) GetOpuid() string {
+	return o.Data.OriginalUserId
+}
 
 func (o onepowerIdentity) GetUsername() string {
 	if o.Data.AccountID != "" {

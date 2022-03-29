@@ -119,6 +119,9 @@ func (a idaasIdentity) GetUsername() string {
 func (a idaasIdentity) GetEmail() string {
 	return a.Email
 }
+func (a idaasIdentity) GetOpuid() string {
+	return ""
+}
 
 func (a *aliyunIDaaS) IdentityExchangeCallback(req *http.Request) (identityprovider.Identity, error) {
 	// OAuth2 callback, see also https://tools.ietf.org/html/rfc6749#section-4.1.2
