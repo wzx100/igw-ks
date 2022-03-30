@@ -18,9 +18,6 @@ RUN apk add --no-cache ca-certificates
 
 # install helm
 #ADD http://repo.huaweicloud.com/helm/v3.5.2/helm-v3.5.2-linux-arm64.tar.gz /tmp
-RUN yum install go
-RUN go env -w GO111MODULE=on
-RUN go env -w GOPROXY=https://goproxy.cn,direct
 RUN wget https://repo.huaweicloud.com/helm/v3.5.2/helm-v3.5.2-linux-arm64.tar.gz -o /tmp/helm-v3.5.2-linux-arm64.tar.gz
 RUN tar xvzf /tmp/helm-${HELM_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz -C /tmp
 RUN mv /tmp/${TARGETOS}-${TARGETARCH}/helm ${OUTDIR}/usr/local/bin/
