@@ -635,6 +635,7 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 		var userResp userResp
 		err = json.Unmarshal(data, &userResp)
 		opuid := userResp.Data
+		fmt.Println("==========获取到返回的op用户uid为:", opuid, "=========")
 		user.Spec.Opuid = opuid
 	}
 	created, err := h.im.CreateUser(&user)
