@@ -74,6 +74,7 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 
 	fmt.Println("========当前登录用户名AccountName为:", authenticated.GetUsername(), "==========")
 	user, err := o.userGetter.findUser(authenticated.GetUsername())
+	fmt.Println("========查询etcd的信息为:邮件:", user.Spec.Email, "姓名:", user.ObjectMeta.Name, "===========")
 	//user, err := o.userGetter.findMappedUser(providerOptions.Name, authenticated.GetUserID())
 	if user == nil && providerOptions.MappingMethod == oauth.MappingMethodLookup {
 		klog.Error(err)
