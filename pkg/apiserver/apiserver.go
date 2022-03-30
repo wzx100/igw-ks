@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	hellokubesphere "kubesphere.io/kubesphere/pkg/kapis/hellokubesphere/v1alpha1"
 	"net/http"
 	rt "runtime"
 	"strconv"
@@ -257,6 +258,8 @@ func (s *APIServer) installKubeSphereAPIs() {
 		s.KubernetesClient.KubeSphere()))
 	urlruntime.Must(notificationkapisv2beta2.AddToContainer(s.container, s.Config.NotificationOptions))
 	urlruntime.Must(gatewayv1alpha1.AddToContainer(s.container, s.Config.GatewayOptions, s.RuntimeCache, s.RuntimeClient, s.InformerFactory, s.KubernetesClient.Kubernetes(), s.LoggingClient))
+	urlruntime.Must(hellokubesphere.AddToContainer(s.container))
+
 }
 
 // installCRDAPIs Install CRDs to the KAPIs with List and Get options
