@@ -67,6 +67,12 @@ type userCenterRespData struct {
 	//租户ID
 	TenantId string `json:"tenantId"`
 }
+type userResp struct {
+	Code    string `json:"code"`
+	Message string `json:"msg"`
+	Data    string `json:"data"`
+	Success bool   `json:"success"`
+}
 
 //const ChangePasswordUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4/portalcustomer/v1.0.0/user-center/userinfo/self/pwd"
 const ChangePasswordUrl = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo/self/pwd"
@@ -605,18 +611,18 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 		return
 	}
 	defer opResp.Body.Close()
-	var userResp userCenterResp
-	err = json.Unmarshal(data, &userResp)
+	var userCenterResp userCenterResp
+	err = json.Unmarshal(data, &userCenterResp)
 	//if err != nil {
 	//	api.HandleInternalError(resp, req, err)
 	//	return
 	//}
-	if userResp.Success == false {
+	if userCenterResp.Success == false {
 		var errorMessage string
-		if userResp.Message != "" {
-			errorMessage = userResp.Message
+		if userCenterResp.Message != "" {
+			errorMessage = userCenterResp.Message
 		} else {
-			jsonByte, _ := json.Marshal(userResp.Data)
+			jsonByte, _ := json.Marshal(userCenterResp.Data)
 			errorMessage = string(jsonByte)
 		}
 		fmt.Println("调用op新增用户接口失败:", errorMessage)
@@ -624,6 +630,12 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 		err = errors.NewInternalError(fmt.Errorf(errorMessage))
 		api.HandleInternalError(resp, req, err)
 		return
+	} else {
+		//如果成功获取到对应的id赋值给user
+		var userResp userResp
+		err = json.Unmarshal(data, &userResp)
+		opuid := userResp.Data
+		user.Spec.Opuid = opuid
 	}
 	created, err := h.im.CreateUser(&user)
 	if err != nil {
