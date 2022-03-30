@@ -92,6 +92,7 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 			return nil, providerOptions.Name, err
 		}
 	}
+	fmt.Println("===========>登录跳转成功结束<=========")
 
 	if user != nil {
 		return &authuser.DefaultInfo{Name: user.GetName()}, providerOptions.Name, nil

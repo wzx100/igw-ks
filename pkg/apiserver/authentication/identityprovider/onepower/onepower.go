@@ -163,6 +163,7 @@ func (o *onepower) IdentityExchangeCallback(req *http.Request) (identityprovider
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("===========>登录跳转成功开始<=========")
 
 	//存储token值
 	opTokenMap["accessOpToken"] = token.AccessToken
