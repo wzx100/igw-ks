@@ -87,9 +87,9 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 
 	// the user will automatically create and mapping when login successful.
 	if user == nil && providerOptions.MappingMethod == oauth.MappingMethodAuto {
-		if !providerOptions.DisableLoginConfirmation {
-			return preRegistrationUser(providerOptions.Name, authenticated), providerOptions.Name, nil
-		}
+		//if !providerOptions.DisableLoginConfirmation {
+		//	return preRegistrationUser(providerOptions.Name, authenticated), providerOptions.Name, nil
+		//}
 		fmt.Println("========当前用户AccountName:", authenticated.GetUsername(), "在系统不存在==========")
 		user, err = o.ksClient.IamV1alpha2().Users().Create(context.Background(), mappedUser(providerOptions.Name, authenticated), metav1.CreateOptions{})
 		if err != nil {
