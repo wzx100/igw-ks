@@ -121,7 +121,15 @@ func (o oidcIdentity) GetUserID() string {
 func (o oidcIdentity) GetUsername() string {
 	return o.PreferredUsername
 }
-
+func (o oidcIdentity) GetDeptid() string {
+	return ""
+}
+func (o oidcIdentity) GetCustomerId() string {
+	return ""
+}
+func (o oidcIdentity) GetTenantId() string {
+	return ""
+}
 func (o oidcIdentity) GetEmail() string {
 	return o.Email
 }

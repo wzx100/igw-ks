@@ -34,6 +34,15 @@ spec:
     - jsonPath: .spec.opuid
       name: Opuid
       type: string
+    - jsonPath: .spec.optenantid
+      name: OpTenantId
+      type: string
+    - jsonPath: .spec.opcustomerid
+      name: OpCustomerId
+      type: string
+    - jsonPath: .spec.opdeptid
+      name: OpDeptId
+      type: string
     name: v1alpha2
     schema:
       openAPIV3Schema:
@@ -61,7 +70,11 @@ spec:
                 type: string
               opuid:
                 type: string
-              cellphone:
+              optenantid:
+                type: string
+              opcustomerid:
+                type: string
+              opdeptid:
                 type: string
               sex:
                 type: integer

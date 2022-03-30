@@ -123,10 +123,13 @@ type UserSpec struct {
 	// +optional
 	DisplayName string `json:"displayName,omitempty"`
 	// +optional
-	Groups    []string `json:"groups,omitempty"`
-	Sex       int      `json:"sex"`
-	Cellphone string   `json:"cellphone"`
-	Opuid     string   `json:"opuid"`
+	Groups       []string `json:"groups,omitempty"`
+	Sex          int      `json:"sex"`
+	Cellphone    string   `json:"cellphone"`
+	Opuid        string   `json:"opuid"`
+	OpTenantId   string   `json:"optenantid"`
+	OpCustomerId string   `json:"opcustomerid"`
+	OpDeptId     string   `json:"opdeptid"`
 
 	// password will be encrypted by mutating admission webhook
 	// +kubebuilder:validation:MinLength=6

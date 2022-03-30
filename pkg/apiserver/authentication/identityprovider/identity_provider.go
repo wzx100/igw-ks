@@ -44,6 +44,9 @@ type Identity interface {
 	// GetEmail optional
 	GetEmail() string
 	GetOpuid() string
+	GetDeptid() string
+	GetCustomerId() string
+	GetTenantId() string
 }
 
 // SetupWithOptions will verify the configuration and initialize the identityProviders

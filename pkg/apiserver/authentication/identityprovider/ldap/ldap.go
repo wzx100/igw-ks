@@ -108,7 +108,15 @@ func (l *ldapIdentity) GetUserID() string {
 func (l *ldapIdentity) GetUsername() string {
 	return l.Username
 }
-
+func (o ldapIdentity) GetDeptid() string {
+	return ""
+}
+func (o ldapIdentity) GetCustomerId() string {
+	return ""
+}
+func (o ldapIdentity) GetTenantId() string {
+	return ""
+}
 func (l *ldapIdentity) GetEmail() string {
 	return l.Email
 }

@@ -136,6 +136,15 @@ func (o onepowerIdentity) GetUsername() string {
 		return o.Data.Mobile
 	}
 }
+func (o onepowerIdentity) GetDeptid() string {
+	return o.Data.OriginalDeptId
+}
+func (o onepowerIdentity) GetCustomerId() string {
+	return o.Data.OriginalUserId
+}
+func (o onepowerIdentity) GetTenantId() string {
+	return o.Data.OriginalTenantId
+}
 
 func (o onepowerIdentity) GetEmail() string {
 	return o.Data.Email

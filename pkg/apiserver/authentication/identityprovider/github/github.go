@@ -162,6 +162,15 @@ func (g githubIdentity) GetUserID() string {
 func (g githubIdentity) GetUsername() string {
 	return g.Login
 }
+func (o githubIdentity) GetDeptid() string {
+	return ""
+}
+func (o githubIdentity) GetCustomerId() string {
+	return ""
+}
+func (o githubIdentity) GetTenantId() string {
+	return ""
+}
 
 func (g githubIdentity) GetEmail() string {
 	return g.Email
