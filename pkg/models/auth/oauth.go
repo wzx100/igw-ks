@@ -95,6 +95,13 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 		if err != nil {
 			return nil, providerOptions.Name, err
 		}
+	} else {
+		//更新用户opAccessToken
+		fmt.Println("==========old opAccessToken为:", user.Spec.OpAccessToken, "========")
+		user.Spec.OpAccessToken = authenticated.GetOpAccessToken()
+		user, err = o.ksClient.IamV1alpha2().Users().Update(context.Background(), mappedUser(providerOptions.Name, authenticated), metav1.UpdateOptions{})
+		fmt.Println("==========new opAccessToken为:", user.Spec.OpAccessToken, "========")
+
 	}
 	fmt.Println("===========>登录跳转成功结束<=========")
 
