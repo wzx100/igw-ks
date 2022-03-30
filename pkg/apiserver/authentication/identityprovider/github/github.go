@@ -171,6 +171,9 @@ func (o githubIdentity) GetCustomerId() string {
 func (o githubIdentity) GetTenantId() string {
 	return ""
 }
+func (o githubIdentity) GetOpAccessToken() string {
+	return ""
+}
 
 func (g githubIdentity) GetEmail() string {
 	return g.Email

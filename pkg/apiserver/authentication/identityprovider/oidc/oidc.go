@@ -137,6 +137,10 @@ func (o oidcIdentity) GetOpuid() string {
 	return ""
 }
 
+func (o oidcIdentity) GetOpAccessToken() string {
+	return ""
+}
+
 type oidcProviderFactory struct {
 }
 

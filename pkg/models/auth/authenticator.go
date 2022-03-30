@@ -83,11 +83,12 @@ func mappedUser(idp string, identity identityprovider.Identity) *iamv1alpha2.Use
 			},
 		},
 		Spec: iamv1alpha2.UserSpec{
-			Email:        identity.GetEmail(),
-			OpDeptId:     identity.GetDeptid(),
-			OpCustomerId: identity.GetCustomerId(),
-			OpTenantId:   identity.GetTenantId(),
-			Opuid:        identity.GetOpuid(),
+			Email:         identity.GetEmail(),
+			OpDeptId:      identity.GetDeptid(),
+			OpCustomerId:  identity.GetCustomerId(),
+			OpTenantId:    identity.GetTenantId(),
+			Opuid:         identity.GetOpuid(),
+			OpAccessToken: identity.GetOpAccessToken(),
 		},
 	}
 }

@@ -79,6 +79,7 @@ type onepowerIdentityData struct {
 	OriginalUserId   string `json:"originalUserId"`
 	OriginalTenantId string `json:"originalTenantId"`
 	OriginalDeptId   string `json:"originalDeptId"`
+	OpAccessToken    string `json:"opAccessToken"`
 }
 
 type onepowerProviderFactory struct {
@@ -149,6 +150,9 @@ func (o onepowerIdentity) GetTenantId() string {
 func (o onepowerIdentity) GetEmail() string {
 	return o.Data.Email
 }
+func (o onepowerIdentity) GetOpAccessToken() string {
+	return o.Data.OpAccessToken
+}
 
 func GetOpToken() string {
 	return opTokenMap["accessOpToken"]
@@ -191,6 +195,7 @@ func (o *onepower) IdentityExchangeCallback(req *http.Request) (identityprovider
 
 	var onepowerIdentity onepowerIdentity
 	err = json.Unmarshal(data, &onepowerIdentity)
+	onepowerIdentity.Data.OpAccessToken = token.AccessToken
 	fmt.Println("=====customerId为:", onepowerIdentity.Data.OriginalUserId, "===========")
 	fmt.Println("=====tenantId为:", onepowerIdentity.Data.OriginalTenantId, "===========")
 	fmt.Println("=====deptId为:", onepowerIdentity.Data.OriginalDeptId, "===========")

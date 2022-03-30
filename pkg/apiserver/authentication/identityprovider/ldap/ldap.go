@@ -123,6 +123,9 @@ func (l *ldapIdentity) GetEmail() string {
 func (l *ldapIdentity) GetOpuid() string {
 	return ""
 }
+func (o ldapIdentity) GetOpAccessToken() string {
+	return ""
+}
 
 func (l ldapProvider) Authenticate(username string, password string) (identityprovider.Identity, error) {
 	conn, err := l.newConn()

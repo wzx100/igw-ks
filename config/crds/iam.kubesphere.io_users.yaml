@@ -34,6 +34,9 @@ spec:
     - jsonPath: .spec.opuid
       name: Opuid
       type: string
+    - jsonPath: .spec.opaccesstoken
+      name: OpAccessToken
+      type: string
     - jsonPath: .spec.optenantid
       name: OpTenantId
       type: string
@@ -75,6 +78,8 @@ spec:
               opcustomerid:
                 type: string
               opdeptid:
+                type: string
+              opaccesstoken:
                 type: string
               sex:
                 type: integer

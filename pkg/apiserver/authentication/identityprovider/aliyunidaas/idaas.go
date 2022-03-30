@@ -115,6 +115,9 @@ func (a idaasIdentity) GetUserID() string {
 func (a idaasIdentity) GetUsername() string {
 	return a.Username
 }
+func (o idaasIdentity) GetOpAccessToken() string {
+	return ""
+}
 
 func (a idaasIdentity) GetEmail() string {
 	return a.Email

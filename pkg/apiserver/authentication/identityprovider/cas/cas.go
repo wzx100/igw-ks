@@ -63,6 +63,9 @@ func (o casIdentity) GetCustomerId() string {
 func (o casIdentity) GetTenantId() string {
 	return ""
 }
+func (o casIdentity) GetOpAccessToken() string {
+	return ""
+}
 
 func (c casIdentity) GetEmail() string {
 	return ""
