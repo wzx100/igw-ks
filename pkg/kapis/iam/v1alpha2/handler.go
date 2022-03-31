@@ -556,8 +556,8 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 			return
 		}
 	}
-	fmt.Println("当前操作用户为:", operator.GetName())
-	operatorname := operator.GetName()
+	operatorname := user.ObjectMeta.Annotations["kubesphere.io/creator"]
+	fmt.Println("当前操作用户为:", operatorname)
 	operatoruser, err := h.im.DescribeUser(operatorname)
 
 	if err != nil {
@@ -826,6 +826,29 @@ func (h *iamHandler) DeleteUser(request *restful.Request, response *restful.Resp
 
 	user, _ := h.im.DescribeUser(username)
 	if user != nil {
+		operator, _ := apirequest.UserFrom(request.Request.Context())
+		fmt.Println("当前操作用户为:", operator.GetName())
+
+		operatorname := operator.GetName()
+		operatoruser, err := h.im.DescribeUser(operatorname)
+
+		if err != nil {
+			fmt.Println("=========查询用户信息异常======", err.Error())
+			api.HandleInternalError(response, request, err)
+			return
+		}
+		if operatoruser == nil {
+			fmt.Println("==========查询用户信息为空===========")
+			api.HandleError(response, request, fmt.Errorf("==========查询用户信息为空==========="))
+			return
+		}
+		if operatoruser.Spec.OpTenantId == "" || operatoruser.Spec.OpCustomerId == "" {
+			fmt.Println("==========删除用户,获取当前登录用户为空===========")
+			api.HandleError(response, request, fmt.Errorf("==========删除用户,获取当前登录用户为空==========="))
+			return
+		}
+		fmt.Println("========originalTenantId:", operatoruser.Spec.OpTenantId, ",originalCustomerId:", operatoruser.Spec.OpCustomerId, "==============")
+
 		opuid := user.Spec.Opuid
 		if opuid != "" {
 			fmt.Println("========获取用户的opuid为:", opuid, "==============")
@@ -837,40 +860,7 @@ func (h *iamHandler) DeleteUser(request *restful.Request, response *restful.Resp
 				return
 			}
 			opDeleteUserReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			operator, _ := apirequest.UserFrom(request.Request.Context())
-			fmt.Println("当前操作用户为:", operator.GetName())
 
-			operatorname := operator.GetName()
-			operatoruser, err := h.im.DescribeUser(operatorname)
-
-			if err != nil {
-				fmt.Println("=========查询用户信息异常======", err.Error())
-				api.HandleInternalError(response, request, err)
-				return
-			}
-			if operatoruser == nil {
-				fmt.Println("==========查询用户信息为空===========")
-				api.HandleError(response, request, fmt.Errorf("==========查询用户信息为空==========="))
-				return
-			}
-			if operatoruser.Spec.OpTenantId == "" || operatoruser.Spec.OpCustomerId == "" {
-				fmt.Println("==========删除用户,获取当前登录用户为空===========")
-				api.HandleError(response, request, fmt.Errorf("==========删除用户,获取当前登录用户为空==========="))
-				return
-			}
-			fmt.Println("========originalTenantId:", operatoruser.Spec.OpTenantId, ",originalCustomerId:", operatoruser.Spec.OpCustomerId, "==============")
-
-			if operatoruser.Spec.OpTenantId == "" || operatoruser.Spec.OpCustomerId == "" {
-				fmt.Println("==========删除用户,获取当前登录用户为空===========")
-				api.HandleError(response, request, fmt.Errorf("==========删除用户,获取当前登录用户为空==========="))
-				return
-			}
-
-			if operatoruser.Spec.OpTenantId == "" || operatoruser.Spec.OpCustomerId == "" {
-				fmt.Println("==========删除用户,获取当前登录用户为空===========")
-				api.HandleError(response, request, fmt.Errorf("==========删除用户,获取当前登录用户为空==========="))
-				return
-			}
 			opDeleteUserReq.Header.Set("customer_id", user.Spec.OpCustomerId)
 			//opDeleteUserReq.Header.Set("customer_id", "739865515899486208")
 			opDeleteUserReq.Header.Set("tenant_id", user.Spec.OpTenantId)
