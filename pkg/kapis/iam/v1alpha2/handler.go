@@ -21,7 +21,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"kubesphere.io/kubesphere/pkg/apiserver/authentication/identityprovider/onepower"
+	"k8s.io/apiserver/pkg/endpoints/request"
+	"kubesphere.io/kubesphere/pkg/models/auth"
 	"net/http"
 	"strings"
 
@@ -30,8 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	authuser "k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/klog"
-	"kubesphere.io/kubesphere/pkg/apiserver/request"
-
 	iamv1alpha2 "kubesphere.io/api/iam/v1alpha2"
 
 	"kubesphere.io/kubesphere/pkg/api"
@@ -92,10 +91,11 @@ type PasswordReset struct {
 }
 
 type iamHandler struct {
-	am         am.AccessManagementInterface
-	im         im.IdentityManagementInterface
-	group      group.GroupOperator
-	authorizer authorizer.Authorizer
+	am            am.AccessManagementInterface
+	im            im.IdentityManagementInterface
+	tokenOperator auth.TokenManagementInterface
+	group         group.GroupOperator
+	authorizer    authorizer.Authorizer
 }
 
 func newIAMHandler(im im.IdentityManagementInterface, am am.AccessManagementInterface, group group.GroupOperator, authorizer authorizer.Authorizer) *iamHandler {
@@ -556,13 +556,26 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 			return
 		}
 	}
+	fmt.Println("当前操作用户为:", operator.GetName())
+	operatorname := operator.GetName()
+	operatoruser, err := h.im.DescribeUser(operatorname)
 
-	if onepower.GetTenantId() == "" || onepower.GetCustomerId() == "" || onepower.GetDeptId() == "" {
+	if err != nil {
+		fmt.Println("=========查询用户信息异常======", err.Error())
+		api.HandleInternalError(resp, req, err)
+		return
+	}
+	if operatoruser == nil {
+		fmt.Println("==========查询用户信息为空===========")
+		api.HandleError(resp, req, fmt.Errorf("==========查询用户信息为空==========="))
+		return
+	}
+	if operatoruser.Spec.OpTenantId == "" || operatoruser.Spec.OpCustomerId == "" || operatoruser.Spec.OpDeptId == "" {
 		fmt.Println("==========新增用户,获取当前登录用户为空===========")
 		api.HandleError(resp, req, fmt.Errorf("==========新增用户,获取当前登录用户为空==========="))
 		return
 	}
-	fmt.Println("========originalTenantId:", onepower.GetTenantId(), ",originalCustomerId:", onepower.GetCustomerId(), ",deptId:", onepower.GetDeptId(), "==============")
+	fmt.Println("========originalTenantId:", operatoruser.Spec.OpTenantId, ",originalCustomerId:", operatoruser.Spec.OpCustomerId, ",deptId:", operatoruser.Spec.OpDeptId, "==============")
 	//调用op新增用户接口
 	//JSON序列化
 	config := map[string]interface{}{}
@@ -571,7 +584,7 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 	//状态为启用
 	config["status"] = 1
 	//状态为启用
-	config["deptId"] = onepower.GetDeptId()
+	config["deptId"] = operatoruser.Spec.OpDeptId
 	//config["deptId"] = "1329701508497645570"
 
 	if user.ObjectMeta.Name != "" {
@@ -592,9 +605,9 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 		return
 	}
 	opCreateReq.Header.Set("Content-Type", "application/json")
-	opCreateReq.Header.Set("customer_id", onepower.GetCustomerId())
+	opCreateReq.Header.Set("customer_id", operatoruser.Spec.OpCustomerId)
 	//opCreateReq.Header.Set("customer_id", "739865515899486208")
-	opCreateReq.Header.Set("tenant_id", onepower.GetTenantId())
+	opCreateReq.Header.Set("tenant_id", operatoruser.Spec.OpTenantId)
 	//opCreateReq.Header.Set("tenant_id", "1329701507709116418")
 
 	defer opCreateReq.Body.Close()
@@ -747,13 +760,35 @@ func (h *iamHandler) ModifyPassword(request *restful.Request, response *restful.
 			return
 		}
 		opChangePwdReq.Header.Set("Content-Type", "application/json")
-		if onepower.GetTenantId() == "" || onepower.GetCustomerId() == "" {
+		fmt.Println("当前操作用户为:", operator.GetName())
+
+		operatorname := operator.GetName()
+		operatoruser, err := h.im.DescribeUser(operatorname)
+
+		if err != nil {
+			fmt.Println("=========查询用户信息异常======", err.Error())
+			api.HandleInternalError(response, request, err)
+			return
+		}
+		if operatoruser == nil {
+			fmt.Println("==========查询用户信息为空===========")
+			api.HandleError(response, request, fmt.Errorf("==========查询用户信息为空==========="))
+			return
+		}
+		if operatoruser.Spec.OpTenantId == "" || operatoruser.Spec.OpCustomerId == "" {
 			fmt.Println("==========修改密码,获取当前登录用户为空===========")
 			api.HandleError(response, request, fmt.Errorf("==========修改密码,获取当前登录用户为空==========="))
 			return
 		}
-		opChangePwdReq.Header.Set("customer_id", onepower.GetCustomerId())
-		opChangePwdReq.Header.Set("tenant_id", onepower.GetTenantId())
+		fmt.Println("========originalTenantId:", operatoruser.Spec.OpTenantId, ",originalCustomerId:", operatoruser.Spec.OpCustomerId, "==============")
+
+		if operatoruser.Spec.OpTenantId == "" || operatoruser.Spec.OpCustomerId == "" {
+			fmt.Println("==========修改密码,获取当前登录用户为空===========")
+			api.HandleError(response, request, fmt.Errorf("==========修改密码,获取当前登录用户为空==========="))
+			return
+		}
+		opChangePwdReq.Header.Set("customer_id", operatoruser.Spec.OpCustomerId)
+		opChangePwdReq.Header.Set("tenant_id", operatoruser.Spec.OpTenantId)
 
 		defer opChangePwdReq.Body.Close()
 		client := http.Client{}
@@ -802,14 +837,43 @@ func (h *iamHandler) DeleteUser(request *restful.Request, response *restful.Resp
 				return
 			}
 			opDeleteUserReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			if onepower.GetTenantId() == "" || onepower.GetCustomerId() == "" {
+			operator, _ := apirequest.UserFrom(request.Request.Context())
+			fmt.Println("当前操作用户为:", operator.GetName())
+
+			operatorname := operator.GetName()
+			operatoruser, err := h.im.DescribeUser(operatorname)
+
+			if err != nil {
+				fmt.Println("=========查询用户信息异常======", err.Error())
+				api.HandleInternalError(response, request, err)
+				return
+			}
+			if operatoruser == nil {
+				fmt.Println("==========查询用户信息为空===========")
+				api.HandleError(response, request, fmt.Errorf("==========查询用户信息为空==========="))
+				return
+			}
+			if operatoruser.Spec.OpTenantId == "" || operatoruser.Spec.OpCustomerId == "" {
 				fmt.Println("==========删除用户,获取当前登录用户为空===========")
 				api.HandleError(response, request, fmt.Errorf("==========删除用户,获取当前登录用户为空==========="))
 				return
 			}
-			opDeleteUserReq.Header.Set("customer_id", onepower.GetCustomerId())
+			fmt.Println("========originalTenantId:", operatoruser.Spec.OpTenantId, ",originalCustomerId:", operatoruser.Spec.OpCustomerId, "==============")
+
+			if operatoruser.Spec.OpTenantId == "" || operatoruser.Spec.OpCustomerId == "" {
+				fmt.Println("==========删除用户,获取当前登录用户为空===========")
+				api.HandleError(response, request, fmt.Errorf("==========删除用户,获取当前登录用户为空==========="))
+				return
+			}
+
+			if operatoruser.Spec.OpTenantId == "" || operatoruser.Spec.OpCustomerId == "" {
+				fmt.Println("==========删除用户,获取当前登录用户为空===========")
+				api.HandleError(response, request, fmt.Errorf("==========删除用户,获取当前登录用户为空==========="))
+				return
+			}
+			opDeleteUserReq.Header.Set("customer_id", user.Spec.OpCustomerId)
 			//opDeleteUserReq.Header.Set("customer_id", "739865515899486208")
-			opDeleteUserReq.Header.Set("tenant_id", onepower.GetTenantId())
+			opDeleteUserReq.Header.Set("tenant_id", user.Spec.OpTenantId)
 			//opDeleteUserReq.Header.Set("tenant_id", "1329701507709116418")
 			client := http.Client{}
 			resp, err := client.Do(opDeleteUserReq) //Do 方法发送请求，返回 HTTP 回复
