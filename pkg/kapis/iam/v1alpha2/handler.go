@@ -748,7 +748,7 @@ func (h *iamHandler) ModifyPassword(request *restful.Request, response *restful.
 		}
 		opChangePwdReq.Header.Set("Content-Type", "application/json")
 		if onepower.GetTenantId() == "" || onepower.GetCustomerId() == "" {
-			fmt.Println("==========修改免密,获取当前登录用户为空===========")
+			fmt.Println("==========修改密码,获取当前登录用户为空===========")
 			api.HandleError(response, request, fmt.Errorf("==========修改密码,获取当前登录用户为空==========="))
 			return
 		}
