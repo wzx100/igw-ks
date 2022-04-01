@@ -21,17 +21,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/endpoints/request"
+	iamv1alpha2 "kubesphere.io/api/iam/v1alpha2"
 	"kubesphere.io/kubesphere/pkg/models/auth"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/emicklei/go-restful"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	authuser "k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/klog"
-	iamv1alpha2 "kubesphere.io/api/iam/v1alpha2"
 
 	"kubesphere.io/kubesphere/pkg/api"
 	"kubesphere.io/kubesphere/pkg/apiserver/authorization/authorizer"
@@ -75,6 +77,7 @@ type userResp struct {
 
 //const ChangePasswordUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4/portalcustomer/v1.0.0/user-center/userinfo/self/pwd"
 const ChangePasswordUrl = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo/self/pwd"
+const finalizer = "finalizers.kubesphere.io/users"
 
 //const CreateUserUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4/portalcustomer/v1.0.0/user-center/userinfo"
 const CreateUserUrl = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo"
@@ -655,6 +658,12 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 		opuid := userResp.Data
 		fmt.Println("==========获取到返回的op用户uid为:", opuid, "=========")
 		user.Spec.Opuid = opuid
+	}
+	user.ObjectMeta.Finalizers = append(user.ObjectMeta.Finalizers, finalizer)
+	active := iamv1alpha2.UserActive
+	user.Status = iamv1alpha2.UserStatus{
+		State:              &active,
+		LastTransitionTime: &metav1.Time{Time: time.Now()},
 	}
 	created, err := h.im.CreateUser(&user)
 	if err != nil {
