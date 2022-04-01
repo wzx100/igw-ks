@@ -885,6 +885,7 @@ func (h *iamHandler) ResetPassword(request *restful.Request, response *restful.R
 			}
 		} else {
 			response.WriteEntity(servererr.New("该用户在op不存在,不可以重置密码"))
+			return
 		}
 
 	}
