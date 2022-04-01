@@ -56,7 +56,7 @@ func AddToContainer(container *restful.Container, im im.IdentityManagementInterf
 		Reads(iamv1alpha2.User{}).
 		Metadata(restfulspec.KeyOpenAPITags, []string{constants.UserTag}))
 
-	ws.Route(ws.GET("/users/{user}/resetPassword").
+	ws.Route(ws.PUT("/users/{user}/resetPassword").
 		To(handler.ResetPassword).
 		Doc("resetPassword the specified user.").
 		Param(ws.PathParameter("user", "username")).
