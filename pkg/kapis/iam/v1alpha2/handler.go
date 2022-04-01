@@ -78,7 +78,12 @@ const ChangePasswordUrl = "http://coreop.ft.internal.virtueit.net/v4/portalcusto
 
 //const CreateUserUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4/portalcustomer/v1.0.0/user-center/userinfo"
 const CreateUserUrl = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo"
+
+//const DeleteUserUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4/portalcustomer/v1.0.0/user-center//userinfo/delete"
 const DeleteUserUrl = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo/delete"
+
+//const ResetUserPassword = "http://induscore.ftzq.internal.virtueit.net:81/v4/portalcustomer/v1.0.0/user-center/userinfo/resetpassword/"
+const ResetUserPassword = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo/resetpassword"
 
 type GroupMember struct {
 	UserName  string `json:"userName"`
@@ -782,11 +787,6 @@ func (h *iamHandler) ModifyPassword(request *restful.Request, response *restful.
 		}
 		fmt.Println("========originalTenantId:", operatoruser.Spec.OpTenantId, ",originalCustomerId:", operatoruser.Spec.OpCustomerId, "==============")
 
-		if operatoruser.Spec.OpTenantId == "" || operatoruser.Spec.OpCustomerId == "" {
-			fmt.Println("==========修改密码,获取当前登录用户为空===========")
-			api.HandleError(response, request, fmt.Errorf("==========修改密码,获取当前登录用户为空==========="))
-			return
-		}
 		opChangePwdReq.Header.Set("customer_id", operatoruser.Spec.OpCustomerId)
 		opChangePwdReq.Header.Set("tenant_id", operatoruser.Spec.OpTenantId)
 
@@ -819,6 +819,77 @@ func (h *iamHandler) ModifyPassword(request *restful.Request, response *restful.
 	}
 
 	response.WriteEntity(servererr.None)
+}
+func (h *iamHandler) ResetPassword(request *restful.Request, response *restful.Response) {
+	username := request.PathParameter("user")
+	user, _ := h.im.DescribeUser(username)
+	if user != nil {
+		opuid := user.Spec.Opuid
+		if opuid != "" {
+			//调用op的重置密码的接口
+			operator, _ := apirequest.UserFrom(request.Request.Context())
+			operatorname := operator.GetName()
+			operatoruser, err := h.im.DescribeUser(operatorname)
+			if err != nil {
+				fmt.Println("=========查询用户信息异常======", err.Error())
+				api.HandleInternalError(response, request, err)
+				return
+			}
+			if operatoruser == nil {
+				fmt.Println("==========查询用户信息为空===========")
+				api.HandleError(response, request, fmt.Errorf("==========查询用户信息为空==========="))
+				return
+			}
+			if operatoruser.Spec.OpTenantId == "" || operatoruser.Spec.OpCustomerId == "" {
+				fmt.Println("==========重置密码,获取当前登录用户为空===========")
+				api.HandleError(response, request, fmt.Errorf("==========重置密码,获取当前登录用户为空==========="))
+				return
+			}
+			fmt.Println("========originalTenantId:", operatoruser.Spec.OpTenantId, ",originalCustomerId:", operatoruser.Spec.OpCustomerId, "==============")
+			//调用op的删除用户接口
+			resetPasswordUrl := ResetUserPassword + "/" + opuid
+			opResetPasswordReq, err := http.NewRequest("POST", resetPasswordUrl, nil)
+			if err != nil {
+				api.HandleInternalError(response, request, err)
+				return
+			}
+			opResetPasswordReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			opResetPasswordReq.Header.Set("customer_id", user.Spec.OpCustomerId)
+			//opResetPasswordReq.Header.Set("customer_id", "739865515899486208")
+			opResetPasswordReq.Header.Set("tenant_id", user.Spec.OpTenantId)
+			//opResetPasswordReq.Header.Set("tenant_id", "1329701507709116418")
+			client := http.Client{}
+			resp, err := client.Do(opResetPasswordReq) //Do 方法发送请求，返回 HTTP 回复
+			if err != nil {
+				fmt.Println("=========调用op重置密码接口异常======", err.Error())
+				api.HandleInternalError(response, request, err)
+				return
+			}
+			data, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				api.HandleInternalError(response, request, err)
+				return
+			}
+			defer resp.Body.Close()
+			var userResp userCenterResp
+			err = json.Unmarshal(data, &userResp)
+			if err != nil {
+				api.HandleInternalError(response, request, err)
+				return
+			}
+			if userResp.Success == false {
+				fmt.Println("调用op重置密码接口失败:", userResp.Message)
+				err = errors.NewInternalError(fmt.Errorf(userResp.Message))
+				api.HandleInternalError(response, request, err)
+				return
+			}
+		} else {
+			response.WriteEntity(servererr.New("该用户在op不存在,不可以重置密码"))
+		}
+
+	}
+	response.WriteEntity(servererr.None)
+
 }
 
 func (h *iamHandler) DeleteUser(request *restful.Request, response *restful.Response) {
