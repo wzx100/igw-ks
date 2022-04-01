@@ -806,10 +806,10 @@ func (h *iamHandler) ModifyPassword(request *restful.Request, response *restful.
 		defer resp.Body.Close()
 		var userResp userCenterResp
 		err = json.Unmarshal(data, &userResp)
-		if err != nil {
-			api.HandleInternalError(response, request, err)
-			return
-		}
+		//if err != nil {
+		//	api.HandleInternalError(response, request, err)
+		//	return
+		//}
 		if userResp.Success == false {
 			fmt.Println("调用op修改密码接口失败:", userResp.Message)
 			err = errors.NewInternalError(fmt.Errorf(userResp.Message))
