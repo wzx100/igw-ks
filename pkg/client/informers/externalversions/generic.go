@@ -31,6 +31,7 @@ import (
 	v1alpha2 "kubesphere.io/api/iam/v1alpha2"
 	networkv1alpha1 "kubesphere.io/api/network/v1alpha1"
 	v2beta1 "kubesphere.io/api/notification/v2beta1"
+	optenantv1alpha1 "kubesphere.io/api/optenant/v1alpha1"
 	quotav1alpha2 "kubesphere.io/api/quota/v1alpha2"
 	servicemeshv1alpha2 "kubesphere.io/api/servicemesh/v1alpha2"
 	storagev1alpha1 "kubesphere.io/api/storage/v1alpha1"
@@ -122,6 +123,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Iam().V1alpha2().WorkspaceRoles().Informer()}, nil
 	case v1alpha2.SchemeGroupVersion.WithResource("workspacerolebindings"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Iam().V1alpha2().WorkspaceRoleBindings().Informer()}, nil
+
+		// Group=optenant.kubesphere.io, Version=v1alpha1
+	case optenantv1alpha1.SchemeGroupVersion.WithResource("optenants"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.OpTenant().V1alpha1().OpTenants().Informer()}, nil
 
 		// Group=network.kubesphere.io, Version=v1alpha1
 	case networkv1alpha1.SchemeGroupVersion.WithResource("ipamblocks"):

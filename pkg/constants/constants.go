@@ -52,6 +52,7 @@ const (
 	AuthenticationTag = "Authentication"
 	UserTag           = "User"
 	GroupTag          = "Group"
+	OpTenantTag       = "OpTenantTag"
 
 	WorkspaceMemberTag     = "Workspace Member"
 	DevOpsProjectMemberTag = "DevOps Project Member"

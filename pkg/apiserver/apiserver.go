@@ -82,6 +82,7 @@ import (
 	openpitrixv1 "kubesphere.io/kubesphere/pkg/kapis/openpitrix/v1"
 	openpitrixv2alpha1 "kubesphere.io/kubesphere/pkg/kapis/openpitrix/v2alpha1"
 	operationsv1alpha2 "kubesphere.io/kubesphere/pkg/kapis/operations/v1alpha2"
+	optenant1alpha1 "kubesphere.io/kubesphere/pkg/kapis/optenant/v1alpha1"
 	resourcesv1alpha2 "kubesphere.io/kubesphere/pkg/kapis/resources/v1alpha2"
 	resourcev1alpha3 "kubesphere.io/kubesphere/pkg/kapis/resources/v1alpha3"
 	servicemeshv1alpha2 "kubesphere.io/kubesphere/pkg/kapis/servicemesh/metrics/v1alpha2"
@@ -92,6 +93,7 @@ import (
 	"kubesphere.io/kubesphere/pkg/models/iam/am"
 	"kubesphere.io/kubesphere/pkg/models/iam/group"
 	"kubesphere.io/kubesphere/pkg/models/iam/im"
+	"kubesphere.io/kubesphere/pkg/models/optenant"
 	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/loginrecord"
 	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/user"
 	"kubesphere.io/kubesphere/pkg/simple/client/alerting"
@@ -235,6 +237,9 @@ func (s *APIServer) installKubeSphereAPIs() {
 	urlruntime.Must(iamapi.AddToContainer(s.container, imOperator, amOperator,
 		group.New(s.InformerFactory, s.KubernetesClient.KubeSphere(), s.KubernetesClient.Kubernetes()),
 		rbacAuthorizer))
+	urlruntime.Must(optenant1alpha1.AddToContainer(s.container, imOperator, amOperator,
+		optenant.New(s.InformerFactory, s.KubernetesClient.KubeSphere(), s.KubernetesClient.Kubernetes()),
+		rbacAuthorizer))
 
 	userLister := s.InformerFactory.KubeSphereSharedInformerFactory().Iam().V1alpha2().Users().Lister()
 	urlruntime.Must(oauth.AddToContainer(s.container, imOperator,
@@ -304,6 +309,7 @@ func (s *APIServer) buildHandlerChain(stopCh <-chan struct{}) {
 			iamv1alpha2.Resource(iamv1alpha2.ResourcesPluralGlobalRole),
 			iamv1alpha2.Resource(iamv1alpha2.ResourcesPluralGlobalRoleBinding),
 			tenantv1alpha1.Resource(tenantv1alpha1.ResourcePluralWorkspace),
+			//optenantv1alpha1.Resource(optenantv1alpha1.ResourcePluralOpTenant),
 			tenantv1alpha2.Resource(tenantv1alpha1.ResourcePluralWorkspace),
 			tenantv1alpha2.Resource(clusterv1alpha1.ResourcesPluralCluster),
 			clusterv1alpha1.Resource(clusterv1alpha1.ResourcesPluralCluster),
@@ -435,6 +441,7 @@ func (s *APIServer) waitForResourceSync(ctx context.Context) error {
 
 	ksGVRs := []schema.GroupVersionResource{
 		{Group: "tenant.kubesphere.io", Version: "v1alpha1", Resource: "workspaces"},
+		{Group: "optenant.kubesphere.io", Version: "v1alpha1", Resource: "optenants"},
 		{Group: "tenant.kubesphere.io", Version: "v1alpha2", Resource: "workspacetemplates"},
 		{Group: "iam.kubesphere.io", Version: "v1alpha2", Resource: "users"},
 		{Group: "iam.kubesphere.io", Version: "v1alpha2", Resource: "globalroles"},

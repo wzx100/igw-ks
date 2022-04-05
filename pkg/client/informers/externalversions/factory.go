@@ -36,6 +36,7 @@ import (
 	internalinterfaces "kubesphere.io/kubesphere/pkg/client/informers/externalversions/internalinterfaces"
 	network "kubesphere.io/kubesphere/pkg/client/informers/externalversions/network"
 	notification "kubesphere.io/kubesphere/pkg/client/informers/externalversions/notification"
+	optenant "kubesphere.io/kubesphere/pkg/client/informers/externalversions/optenant"
 	quota "kubesphere.io/kubesphere/pkg/client/informers/externalversions/quota"
 	servicemesh "kubesphere.io/kubesphere/pkg/client/informers/externalversions/servicemesh"
 	storage "kubesphere.io/kubesphere/pkg/client/informers/externalversions/storage"
@@ -194,6 +195,7 @@ type SharedInformerFactory interface {
 	Servicemesh() servicemesh.Interface
 	Storage() storage.Interface
 	Tenant() tenant.Interface
+	OpTenant() optenant.Interface
 	Types() types.Interface
 }
 
@@ -239,6 +241,9 @@ func (f *sharedInformerFactory) Storage() storage.Interface {
 
 func (f *sharedInformerFactory) Tenant() tenant.Interface {
 	return tenant.New(f, f.namespace, f.tweakListOptions)
+}
+func (f *sharedInformerFactory) OpTenant() optenant.Interface {
+	return optenant.New(f, f.namespace, f.tweakListOptions)
 }
 
 func (f *sharedInformerFactory) Types() types.Interface {

@@ -32,6 +32,7 @@ import (
 	iamv1alpha2 "kubesphere.io/kubesphere/pkg/client/clientset/versioned/typed/iam/v1alpha2"
 	networkv1alpha1 "kubesphere.io/kubesphere/pkg/client/clientset/versioned/typed/network/v1alpha1"
 	notificationv2beta1 "kubesphere.io/kubesphere/pkg/client/clientset/versioned/typed/notification/v2beta1"
+	optenantv1alpha1 "kubesphere.io/kubesphere/pkg/client/clientset/versioned/typed/optenant/v1alpha1"
 	quotav1alpha2 "kubesphere.io/kubesphere/pkg/client/clientset/versioned/typed/quota/v1alpha2"
 	servicemeshv1alpha2 "kubesphere.io/kubesphere/pkg/client/clientset/versioned/typed/servicemesh/v1alpha2"
 	storagev1alpha1 "kubesphere.io/kubesphere/pkg/client/clientset/versioned/typed/storage/v1alpha1"
@@ -54,6 +55,7 @@ type Interface interface {
 	ServicemeshV1alpha2() servicemeshv1alpha2.ServicemeshV1alpha2Interface
 	StorageV1alpha1() storagev1alpha1.StorageV1alpha1Interface
 	TenantV1alpha1() tenantv1alpha1.TenantV1alpha1Interface
+	OpTenantV1alpha1() optenantv1alpha1.OpTenantV1alpha1Interface
 	TenantV1alpha2() tenantv1alpha2.TenantV1alpha2Interface
 	TypesV1beta1() typesv1beta1.TypesV1beta1Interface
 }
@@ -74,6 +76,7 @@ type Clientset struct {
 	servicemeshV1alpha2 *servicemeshv1alpha2.ServicemeshV1alpha2Client
 	storageV1alpha1     *storagev1alpha1.StorageV1alpha1Client
 	tenantV1alpha1      *tenantv1alpha1.TenantV1alpha1Client
+	optenantV1alpha1    *optenantv1alpha1.OpTenantV1alpha1Client
 	tenantV1alpha2      *tenantv1alpha2.TenantV1alpha2Client
 	typesV1beta1        *typesv1beta1.TypesV1beta1Client
 }
@@ -136,6 +139,11 @@ func (c *Clientset) StorageV1alpha1() storagev1alpha1.StorageV1alpha1Interface {
 // TenantV1alpha1 retrieves the TenantV1alpha1Client
 func (c *Clientset) TenantV1alpha1() tenantv1alpha1.TenantV1alpha1Interface {
 	return c.tenantV1alpha1
+}
+
+// OpTenantV1alpha1 retrieves the OpTenantV1alpha1Client
+func (c *Clientset) OpTenantV1alpha1() optenantv1alpha1.OpTenantV1alpha1Interface {
+	return c.optenantV1alpha1
 }
 
 // TenantV1alpha2 retrieves the TenantV1alpha2Client
@@ -217,6 +225,10 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
+	cs.optenantV1alpha1, err = optenantv1alpha1.NewForConfig(&configShallowCopy)
+	if err != nil {
+		return nil, err
+	}
 	cs.tenantV1alpha2, err = tenantv1alpha2.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
@@ -249,6 +261,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 	cs.servicemeshV1alpha2 = servicemeshv1alpha2.NewForConfigOrDie(c)
 	cs.storageV1alpha1 = storagev1alpha1.NewForConfigOrDie(c)
 	cs.tenantV1alpha1 = tenantv1alpha1.NewForConfigOrDie(c)
+	cs.optenantV1alpha1 = optenantv1alpha1.NewForConfigOrDie(c)
 	cs.tenantV1alpha2 = tenantv1alpha2.NewForConfigOrDie(c)
 	cs.typesV1beta1 = typesv1beta1.NewForConfigOrDie(c)
 
@@ -271,6 +284,7 @@ func New(c rest.Interface) *Clientset {
 	cs.servicemeshV1alpha2 = servicemeshv1alpha2.New(c)
 	cs.storageV1alpha1 = storagev1alpha1.New(c)
 	cs.tenantV1alpha1 = tenantv1alpha1.New(c)
+	cs.optenantV1alpha1 = optenantv1alpha1.New(c)
 	cs.tenantV1alpha2 = tenantv1alpha2.New(c)
 	cs.typesV1beta1 = typesv1beta1.New(c)
 
