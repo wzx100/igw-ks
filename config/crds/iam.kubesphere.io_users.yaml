@@ -24,7 +24,7 @@ spec:
       type: string
     - jsonPath: .spec.sex
       name: Sex
-      type: int
+      type: integer
     - jsonPath: .spec.cellphone
       name: Cellphone
       type: string
