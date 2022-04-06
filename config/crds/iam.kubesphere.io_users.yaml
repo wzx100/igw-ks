@@ -22,29 +22,8 @@ spec:
     - jsonPath: .spec.email
       name: Email
       type: string
-    - jsonPath: .spec.sex
-      name: Sex
-      type: integer
-    - jsonPath: .spec.cellphone
-      name: Cellphone
-      type: string
     - jsonPath: .status.state
       name: Status
-      type: string
-    - jsonPath: .spec.opuid
-      name: Opuid
-      type: string
-    - jsonPath: .spec.opaccesstoken
-      name: OpAccessToken
-      type: string
-    - jsonPath: .spec.optenantid
-      name: OpTenantId
-      type: string
-    - jsonPath: .spec.opcustomerid
-      name: OpCustomerId
-      type: string
-    - jsonPath: .spec.opdeptid
-      name: OpDeptId
       type: string
     name: v1alpha2
     schema:
@@ -66,23 +45,13 @@ spec:
           spec:
             description: UserSpec defines the desired state of User
             properties:
+              cellphone:
+                type: string
               description:
                 description: Description of the user.
                 type: string
               displayName:
                 type: string
-              opuid:
-                type: string
-              optenantid:
-                type: string
-              opcustomerid:
-                type: string
-              opdeptid:
-                type: string
-              opaccesstoken:
-                type: string
-              sex:
-                type: integer
               email:
                 description: Unique email address(https://www.ietf.org/rfc/rfc5322.txt).
                 type: string
@@ -92,6 +61,16 @@ spec:
                 type: array
               lang:
                 description: The preferred written or spoken language for the user.
+                type: string
+              opaccesstoken:
+                type: string
+              opcustomerid:
+                type: string
+              opdeptid:
+                type: string
+              optenantid:
+                type: string
+              opuid:
                 type: string
               password:
                 description: 'password will be encrypted by mutating admission webhook
@@ -115,6 +94,8 @@ spec:
                 minLength: 6
                 pattern: ^(.*[a-z].*[A-Z].*[0-9].*)$|^(.*[a-z].*[0-9].*[A-Z].*)$|^(.*[A-Z].*[a-z].*[0-9].*)$|^(.*[A-Z].*[0-9].*[a-z].*)$|^(.*[0-9].*[a-z].*[A-Z].*)$|^(.*[0-9].*[A-Z].*[a-z].*)$|^(\$2[ayb]\$.{56})$
                 type: string
+              sex:
+                type: integer
             required:
             - email
             type: object
