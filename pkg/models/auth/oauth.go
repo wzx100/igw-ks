@@ -99,6 +99,10 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 		//更新用户opAccessToken
 		fmt.Println("==========old opAccessToken为:", user.Spec.OpAccessToken, "========")
 		user.Spec.OpAccessToken = authenticated.GetOpAccessToken()
+		user.Spec.Opuid = authenticated.GetOpuid()
+		user.Spec.OpCustomerId = authenticated.GetUserID()
+		user.Spec.OpDeptId = authenticated.GetDeptid()
+		user.Spec.OpTenantId = authenticated.GetTenantId()
 		user, err = o.ksClient.IamV1alpha2().Users().Update(context.Background(), user, metav1.UpdateOptions{})
 		fmt.Println("==========new opAccessToken为:", user.Spec.OpAccessToken, "========")
 
