@@ -304,6 +304,8 @@ github.com/go-logfmt/logfmt
 # github.com/go-logr/logr v0.4.0 => github.com/go-logr/logr v0.4.0
 ## explicit
 github.com/go-logr/logr
+# github.com/go-logr/zapr v0.4.0 => github.com/go-logr/zapr v0.4.0
+github.com/go-logr/zapr
 # github.com/go-openapi/analysis v0.19.10 => github.com/go-openapi/analysis v0.19.10
 github.com/go-openapi/analysis
 github.com/go-openapi/analysis/internal
@@ -1980,6 +1982,7 @@ kubesphere.io/api/network/crdinstall
 kubesphere.io/api/network/v1alpha1
 kubesphere.io/api/notification/v2beta1
 kubesphere.io/api/notification/v2beta2
+kubesphere.io/api/optenant/v1alpha1
 kubesphere.io/api/quota/v1alpha2
 kubesphere.io/api/servicemesh/crdinstall
 kubesphere.io/api/servicemesh/v1alpha2
@@ -2046,6 +2049,7 @@ sigs.k8s.io/controller-runtime/pkg/internal/testing/controlplane
 sigs.k8s.io/controller-runtime/pkg/internal/testing/process
 sigs.k8s.io/controller-runtime/pkg/leaderelection
 sigs.k8s.io/controller-runtime/pkg/log
+sigs.k8s.io/controller-runtime/pkg/log/zap
 sigs.k8s.io/controller-runtime/pkg/manager
 sigs.k8s.io/controller-runtime/pkg/manager/signals
 sigs.k8s.io/controller-runtime/pkg/metrics
