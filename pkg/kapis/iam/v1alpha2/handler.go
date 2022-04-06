@@ -863,9 +863,9 @@ func (h *iamHandler) ResetPassword(request *restful.Request, response *restful.R
 				return
 			}
 			opResetPasswordReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			opResetPasswordReq.Header.Set("customer_id", user.Spec.OpCustomerId)
+			opResetPasswordReq.Header.Set("customer_id", operatoruser.Spec.OpCustomerId)
 			//opResetPasswordReq.Header.Set("customer_id", "739865515899486208")
-			opResetPasswordReq.Header.Set("tenant_id", user.Spec.OpTenantId)
+			opResetPasswordReq.Header.Set("tenant_id", operatoruser.Spec.OpTenantId)
 			//opResetPasswordReq.Header.Set("tenant_id", "1329701507709116418")
 			client := http.Client{}
 			resp, err := client.Do(opResetPasswordReq) //Do 方法发送请求，返回 HTTP 回复
@@ -882,10 +882,10 @@ func (h *iamHandler) ResetPassword(request *restful.Request, response *restful.R
 			defer resp.Body.Close()
 			var userResp userCenterResp
 			err = json.Unmarshal(data, &userResp)
-			if err != nil {
-				api.HandleInternalError(response, request, err)
-				return
-			}
+			//if err != nil {
+			//	api.HandleInternalError(response, request, err)
+			//	return
+			//}
 			if userResp.Success == false {
 				fmt.Println("调用op重置密码接口失败:", userResp.Message)
 				err = errors.NewInternalError(fmt.Errorf(userResp.Message))
