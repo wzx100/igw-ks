@@ -111,6 +111,10 @@ func (d *usersGetter) filter(object runtime.Object, filter query.Filter) bool {
 	}
 
 	switch filter.Field {
+	case iamv1alpha2.FieldOptenantId:
+		return user.Spec.OpTenantId == string(filter.Value)
+	case iamv1alpha2.FieldOpuid:
+		return user.Spec.Opuid == string(filter.Value)
 	case iamv1alpha2.FieldEmail:
 		return user.Spec.Email == string(filter.Value)
 	case iamv1alpha2.InGroup:

@@ -303,6 +303,26 @@ func (h *iamHandler) RetrieveMemberRoleTemplates(request *restful.Request, respo
 
 func (h *iamHandler) ListUsers(request *restful.Request, response *restful.Response) {
 	queryParam := query.ParseQueryParameter(request)
+	operator, ok := apirequest.UserFrom(request.Request.Context())
+	if !ok {
+		err := errors.NewInternalError(fmt.Errorf("cannot obtain user info"))
+		api.HandleInternalError(response, request, err)
+		return
+	}
+	operatoruser, err := h.im.DescribeUser(operator.GetName())
+	if err != nil {
+		fmt.Println("=========查询用户信息异常======", err.Error())
+		api.HandleInternalError(response, request, err)
+		return
+	}
+	if operatoruser == nil {
+		fmt.Println("==========查询用户信息为空===========")
+		api.HandleError(response, request, fmt.Errorf("==========查询用户信息为空==========="))
+		return
+	}
+	if operatoruser.Spec.OpTenantId != "" {
+		queryParam.Filters["optenantid"] = query.Value(operatoruser.Spec.OpTenantId)
+	}
 	result, err := h.im.ListUsers(queryParam)
 	if err != nil {
 		api.HandleInternalError(response, request, err)
