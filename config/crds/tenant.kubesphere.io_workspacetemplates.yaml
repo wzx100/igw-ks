@@ -37,6 +37,8 @@ spec:
             type: object
           spec:
             properties:
+              optenantid:
+                type: string
               overrides:
                 items:
                   properties:
@@ -133,6 +135,7 @@ spec:
                     type: object
                 type: object
             required:
+            - optenantid
             - placement
             - template
             type: object
