@@ -39,9 +39,10 @@ type FederatedWorkspace struct {
 }
 
 type FederatedWorkspaceSpec struct {
-	Template  WorkspaceTemplate      `json:"template"`
-	Placement GenericPlacementFields `json:"placement"`
-	Overrides []GenericOverrideItem  `json:"overrides,omitempty"`
+	OpTenantId string                 `json:"optenantid"`
+	Template   WorkspaceTemplate      `json:"template"`
+	Placement  GenericPlacementFields `json:"placement"`
+	Overrides  []GenericOverrideItem  `json:"overrides,omitempty"`
 }
 
 type WorkspaceTemplate struct {

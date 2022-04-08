@@ -68,6 +68,8 @@ const (
 	OriginUIDLabel                        = "iam.kubesphere.io/origin-uid"
 	ServiceAccountReferenceLabel          = "iam.kubesphere.io/serviceaccount-ref"
 	FieldEmail                            = "email"
+	FieldOptenantId                       = "optenantid"
+	FieldOpuid                            = "opuid"
 	ExtraEmail                            = FieldEmail
 	ExtraIdentityProvider                 = "idp"
 	ExtraUID                              = "uid"
