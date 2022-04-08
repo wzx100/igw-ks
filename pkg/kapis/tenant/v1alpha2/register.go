@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha2
 
 import (
+	"kubesphere.io/kubesphere/pkg/models/iam/im"
 	"net/http"
 
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -63,14 +64,14 @@ func Resource(resource string) schema.GroupResource {
 	return GroupVersion.WithResource(resource).GroupResource()
 }
 
-func AddToContainer(c *restful.Container, factory informers.InformerFactory, k8sclient kubernetes.Interface,
+func AddToContainer(im im.IdentityManagementInterface, c *restful.Container, factory informers.InformerFactory, k8sclient kubernetes.Interface,
 	ksclient kubesphere.Interface, evtsClient events.Client, loggingClient logging.Client,
 	auditingclient auditing.Client, am am.AccessManagementInterface, authorizer authorizer.Authorizer,
 	monitoringclient monitoringclient.Interface, cache cache.Cache, meteringOptions *meteringclient.Options) error {
 	mimePatch := []string{restful.MIME_JSON, runtime.MimeMergePatchJson, runtime.MimeJsonPatchJson}
 
 	ws := runtime.NewWebService(GroupVersion)
-	handler := newTenantHandler(factory, k8sclient, ksclient, evtsClient, loggingClient, auditingclient, am, authorizer, monitoringclient, resourcev1alpha3.NewResourceGetter(factory, cache), meteringOptions)
+	handler := newTenantHandler(im, factory, k8sclient, ksclient, evtsClient, loggingClient, auditingclient, am, authorizer, monitoringclient, resourcev1alpha3.NewResourceGetter(factory, cache), meteringOptions)
 
 	ws.Route(ws.GET("/clusters").
 		To(handler.ListClusters).

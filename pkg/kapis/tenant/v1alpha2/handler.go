@@ -19,6 +19,7 @@ package v1alpha2
 import (
 	"encoding/json"
 	"fmt"
+	"kubesphere.io/kubesphere/pkg/models/iam/im"
 
 	"github.com/emicklei/go-restful"
 	corev1 "k8s.io/api/core/v1"
@@ -52,11 +53,12 @@ import (
 )
 
 type tenantHandler struct {
+	im              im.IdentityManagementInterface
 	tenant          tenant.Interface
 	meteringOptions *meteringclient.Options
 }
 
-func newTenantHandler(factory informers.InformerFactory, k8sclient kubernetes.Interface, ksclient kubesphere.Interface,
+func newTenantHandler(im im.IdentityManagementInterface, factory informers.InformerFactory, k8sclient kubernetes.Interface, ksclient kubesphere.Interface,
 	evtsClient events.Client, loggingClient logging.Client, auditingclient auditing.Client,
 	am am.AccessManagementInterface, authorizer authorizer.Authorizer,
 	monitoringclient monitoringclient.Interface, resourceGetter *resourcev1alpha3.ResourceGetter,
@@ -67,6 +69,7 @@ func newTenantHandler(factory informers.InformerFactory, k8sclient kubernetes.In
 	}
 
 	return &tenantHandler{
+		im:              im,
 		tenant:          tenant.New(factory, k8sclient, ksclient, evtsClient, loggingClient, auditingclient, am, authorizer, monitoringclient, resourceGetter),
 		meteringOptions: meteringOptions,
 	}
@@ -75,6 +78,25 @@ func newTenantHandler(factory informers.InformerFactory, k8sclient kubernetes.In
 func (h *tenantHandler) ListWorkspaces(req *restful.Request, resp *restful.Response) {
 	user, ok := request.UserFrom(req.Request.Context())
 	queryParam := query.ParseQueryParameter(req)
+	if !ok {
+		err := errors.NewInternalError(fmt.Errorf("cannot obtain user info"))
+		api.HandleInternalError(resp, req, err)
+		return
+	}
+	operatoruser, err := h.im.DescribeUser("admin")
+	if err != nil {
+		fmt.Println("=========查询用户信息异常======", err.Error())
+		api.HandleInternalError(resp, req, err)
+		return
+	}
+	if operatoruser == nil {
+		fmt.Println("==========查询用户信息为空===========")
+		api.HandleError(resp, req, fmt.Errorf("==========查询用户信息为空==========="))
+		return
+	}
+	if operatoruser.Spec.OpTenantId != "" {
+		queryParam.Filters["optenantid"] = query.Value(operatoruser.Spec.OpTenantId)
+	}
 
 	if !ok {
 		err := fmt.Errorf("cannot obtain user info")
