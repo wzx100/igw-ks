@@ -162,7 +162,7 @@ func (t *tenantOperator) ListWorkspaces(user user.Info, queryParam *query.Query)
 	}
 
 	// retrieving associated resources through role binding
-	workspaceRoleBindings, err := t.am.ListWorkspaceRoleBindings("admin", user.GetGroups(), "")
+	workspaceRoleBindings, err := t.am.ListWorkspaceRoleBindings(user.GetName(), user.GetGroups(), "")
 	if err != nil {
 		klog.Error(err)
 		return nil, err

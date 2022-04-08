@@ -83,7 +83,7 @@ func (h *tenantHandler) ListWorkspaces(req *restful.Request, resp *restful.Respo
 		api.HandleInternalError(resp, req, err)
 		return
 	}
-	operatoruser, err := h.im.DescribeUser("admin")
+	operatoruser, err := h.im.DescribeUser(user.GetName())
 	if err != nil {
 		fmt.Println("=========查询用户信息异常======", err.Error())
 		api.HandleInternalError(resp, req, err)
