@@ -95,6 +95,7 @@ func (h *tenantHandler) ListWorkspaces(req *restful.Request, resp *restful.Respo
 		return
 	}
 	if operatoruser.Spec.OpTenantId != "" {
+		fmt.Println("=========查询企业空间---当前用户名:", operatoruser.GetName(), "当前用户optenantid:", operatoruser.Spec.OpTenantId, "======")
 		queryParam.Filters["optenantid"] = query.Value(operatoruser.Spec.OpTenantId)
 	}
 
