@@ -125,14 +125,16 @@ type UserSpec struct {
 	// +optional
 	DisplayName string `json:"displayName,omitempty"`
 	// +optional
-	Groups        []string `json:"groups,omitempty"`
-	Sex           int      `json:"sex,omitempty"`
-	Cellphone     string   `json:"cellphone,omitempty"`
-	Opuid         string   `json:"opuid,omitempty"`
-	OpTenantId    string   `json:"optenantid,omitempty"`
-	OpCustomerId  string   `json:"opcustomerid,omitempty"`
-	OpDeptId      string   `json:"opdeptid,omitempty"`
-	OpAccessToken string   `json:"opaccesstoken,omitempty"`
+	Groups          []string `json:"groups,omitempty"`
+	Sex             int      `json:"sex,omitempty"`
+	Cellphone       string   `json:"cellphone,omitempty"`
+	Opuid           string   `json:"opuid,omitempty"`
+	OpTenantId      string   `json:"optenantid,omitempty"`
+	OpCustomerId    string   `json:"opcustomerid,omitempty"`
+	OpDeptId        string   `json:"opdeptid,omitempty"`
+	OpAccessToken   string   `json:"opaccesstoken,omitempty"`
+	OpTenantName    string   `json:"opTenantName,omitempty"`
+	BelongWorkSpace string   `json:"belongworkspace,omitempty"`
 
 	// password will be encrypted by mutating admission webhook
 	// +kubebuilder:validation:MinLength=6
@@ -203,10 +205,15 @@ type GlobalRole struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              GolbalSpec `json:"spec"`
 
 	// Rules holds all the PolicyRules for this GlobalRole
 	// +optional
 	Rules []rbacv1.PolicyRule `json:"rules" protobuf:"bytes,2,rep,name=rules"`
+}
+type GolbalSpec struct {
+	// Unique email address(https://www.ietf.org/rfc/rfc5322.txt).
+	OpTenantId string `json:"optenantid,omitempty"`
 }
 
 // +kubebuilder:object:root=true

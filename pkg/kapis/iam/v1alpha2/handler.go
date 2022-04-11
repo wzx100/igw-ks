@@ -24,7 +24,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/endpoints/request"
 	iamv1alpha2 "kubesphere.io/api/iam/v1alpha2"
+	tenantv1alpha1 "kubesphere.io/api/tenant/v1alpha1"
 	"kubesphere.io/kubesphere/pkg/models/auth"
+	"kubesphere.io/kubesphere/pkg/models/optenant"
 	"net/http"
 	"strings"
 	"time"
@@ -101,17 +103,19 @@ type PasswordReset struct {
 type iamHandler struct {
 	am            am.AccessManagementInterface
 	im            im.IdentityManagementInterface
+	opTenantGroup optenant.OpTenantOperator
 	tokenOperator auth.TokenManagementInterface
 	group         group.GroupOperator
 	authorizer    authorizer.Authorizer
 }
 
-func newIAMHandler(im im.IdentityManagementInterface, am am.AccessManagementInterface, group group.GroupOperator, authorizer authorizer.Authorizer) *iamHandler {
+func newIAMHandler(opTenantGroup optenant.OpTenantOperator, im im.IdentityManagementInterface, am am.AccessManagementInterface, group group.GroupOperator, authorizer authorizer.Authorizer) *iamHandler {
 	return &iamHandler{
-		am:         am,
-		im:         im,
-		group:      group,
-		authorizer: authorizer,
+		opTenantGroup: opTenantGroup,
+		am:            am,
+		im:            im,
+		group:         group,
+		authorizer:    authorizer,
 	}
 }
 
@@ -340,9 +344,42 @@ func (h *iamHandler) ListUsers(request *restful.Request, response *restful.Respo
 		if globalRole != nil {
 			user = appendGlobalRoleAnnotation(user, globalRole.Name)
 		}
+		//查询用户所属租户名称
+		opTenant, err := h.opTenantGroup.DescribeOpTenant(user.Spec.OpTenantId)
+		if err != nil {
+			api.HandleInternalError(response, request, err)
+			return
+		}
+		if opTenant != nil {
+			tenantName := opTenant.Spec.TenantName
+			user.Spec.OpTenantName = tenantName
+		}
+		//
+		workspaceRoleBindings, err := h.am.ListWorkspaceRoleBindings(user.ObjectMeta.Name, nil, "")
+		workspaces := make([]string, 0)
+		for _, roleBinding := range workspaceRoleBindings {
+			workspaceName := roleBinding.Labels[tenantv1alpha1.WorkspaceLabel]
+
+			// label matching selector, remove duplicate entity
+			if !contains(workspaces, workspaceName) {
+				workspaces = append(workspaces, workspaceName)
+
+			}
+		}
+		str := strings.Replace(strings.Trim(fmt.Sprint(workspaces), "[]"), " ", ",", -1)
+		user.Spec.BelongWorkSpace = str
+
 		result.Items[i] = user
 	}
 	response.WriteEntity(result)
+}
+func contains(objects []string, workspaceName string) bool {
+	for _, item := range objects {
+		if item == workspaceName {
+			return true
+		}
+	}
+	return false
 }
 
 func appendGlobalRoleAnnotation(user *iamv1alpha2.User, globalRole string) *iamv1alpha2.User {
@@ -381,6 +418,26 @@ func (h *iamHandler) ListClusterRoles(request *restful.Request, response *restfu
 
 func (h *iamHandler) ListGlobalRoles(req *restful.Request, resp *restful.Response) {
 	queryParam := query.ParseQueryParameter(req)
+	operator, ok := apirequest.UserFrom(req.Request.Context())
+	if !ok {
+		err := errors.NewInternalError(fmt.Errorf("cannot obtain user info"))
+		api.HandleInternalError(resp, req, err)
+		return
+	}
+	operatoruser, err := h.im.DescribeUser(operator.GetName())
+	if err != nil {
+		fmt.Println("=========查询用户信息异常======", err.Error())
+		api.HandleInternalError(resp, req, err)
+		return
+	}
+	if operatoruser == nil {
+		fmt.Println("==========查询用户信息为空===========")
+		api.HandleError(resp, req, fmt.Errorf("==========查询用户信息为空==========="))
+		return
+	}
+	if operatoruser.Spec.OpTenantId != "" {
+		queryParam.Filters["optenantid"] = query.Value(operatoruser.Spec.OpTenantId)
+	}
 	result, err := h.am.ListGlobalRoles(queryParam)
 	if err != nil {
 		api.HandleInternalError(resp, req, err)

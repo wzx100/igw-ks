@@ -234,11 +234,11 @@ func (s *APIServer) installKubeSphereAPIs() {
 		s.Config.MultiClusterOptions.ProxyPublishService,
 		s.Config.MultiClusterOptions.ProxyPublishAddress,
 		s.Config.MultiClusterOptions.AgentImage))
-	urlruntime.Must(iamapi.AddToContainer(s.container, imOperator, amOperator,
+	opTenantOperator := optenant.New(s.InformerFactory, s.KubernetesClient.KubeSphere(), s.KubernetesClient.Kubernetes())
+	urlruntime.Must(iamapi.AddToContainer(opTenantOperator, s.container, imOperator, amOperator,
 		group.New(s.InformerFactory, s.KubernetesClient.KubeSphere(), s.KubernetesClient.Kubernetes()),
 		rbacAuthorizer))
-	urlruntime.Must(optenant1alpha1.AddToContainer(s.container, imOperator, amOperator,
-		optenant.New(s.InformerFactory, s.KubernetesClient.KubeSphere(), s.KubernetesClient.Kubernetes()),
+	urlruntime.Must(optenant1alpha1.AddToContainer(s.container, imOperator, amOperator, opTenantOperator,
 		rbacAuthorizer))
 
 	userLister := s.InformerFactory.KubeSphereSharedInformerFactory().Iam().V1alpha2().Users().Lister()
