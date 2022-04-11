@@ -60,6 +60,8 @@ spec:
                   spec:
                     description: UserSpec defines the desired state of User
                     properties:
+                      belongworkspace:
+                        type: string
                       cellphone:
                         type: string
                       description:
@@ -77,6 +79,8 @@ spec:
                       lang:
                         description: The preferred written or spoken language for
                           the user.
+                        type: string
+                      opTenantName:
                         type: string
                       opaccesstoken:
                         type: string

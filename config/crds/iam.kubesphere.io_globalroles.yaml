@@ -83,6 +83,14 @@ spec:
               - verbs
               type: object
             type: array
+          spec:
+            properties:
+              optenantid:
+                description: Unique email address(https://www.ietf.org/rfc/rfc5322.txt).
+                type: string
+            type: object
+        required:
+        - spec
         type: object
     served: true
     storage: true
