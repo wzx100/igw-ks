@@ -191,14 +191,14 @@ func (t *tenantOperator) ListWorkspaces(user user.Info, queryParam *query.Query)
 	// use default pagination search logic
 	result := resources.DefaultList(workspaces, queryParam, func(left runtime.Object, right runtime.Object, field query.Field) bool {
 		return resources.DefaultObjectMetaCompare(left.(*tenantv1alpha2.WorkspaceTemplate).ObjectMeta, right.(*tenantv1alpha2.WorkspaceTemplate).ObjectMeta, field)
-	}, defaultObjectFilter)
+	}, DefaultObjectFilter)
 
 	return result, nil
 }
 
 //  Default metadata filter
 //func DefaultObjectFilter(workSpaceTemplate tenantv1alpha2.WorkspaceTemplate, filter query.Filter) bool {
-func defaultObjectFilter(object runtime.Object, filter query.Filter) bool {
+func DefaultObjectFilter(object runtime.Object, filter query.Filter) bool {
 	workspace, ok := object.(*tenantv1alpha2.WorkspaceTemplate)
 	if !ok {
 		return false
