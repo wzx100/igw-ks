@@ -20,13 +20,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"kubesphere.io/kubesphere/pkg/models/iam/im"
+	"kubesphere.io/kubesphere/pkg/models/optenant"
 
 	"github.com/emicklei/go-restful"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/authentication/user"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 
 	quotav1alpha2 "kubesphere.io/api/quota/v1alpha2"
@@ -36,32 +36,21 @@ import (
 	auditingv1alpha1 "kubesphere.io/kubesphere/pkg/api/auditing/v1alpha1"
 	eventsv1alpha1 "kubesphere.io/kubesphere/pkg/api/events/v1alpha1"
 	loggingv1alpha2 "kubesphere.io/kubesphere/pkg/api/logging/v1alpha2"
-	"kubesphere.io/kubesphere/pkg/apiserver/authorization/authorizer"
 	"kubesphere.io/kubesphere/pkg/apiserver/query"
 	"kubesphere.io/kubesphere/pkg/apiserver/request"
-	kubesphere "kubesphere.io/kubesphere/pkg/client/clientset/versioned"
-	"kubesphere.io/kubesphere/pkg/informers"
-	"kubesphere.io/kubesphere/pkg/models/iam/am"
-	resourcev1alpha3 "kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/resource"
 	"kubesphere.io/kubesphere/pkg/models/tenant"
 	servererr "kubesphere.io/kubesphere/pkg/server/errors"
-	"kubesphere.io/kubesphere/pkg/simple/client/auditing"
-	"kubesphere.io/kubesphere/pkg/simple/client/events"
-	"kubesphere.io/kubesphere/pkg/simple/client/logging"
 	meteringclient "kubesphere.io/kubesphere/pkg/simple/client/metering"
-	monitoringclient "kubesphere.io/kubesphere/pkg/simple/client/monitoring"
 )
 
 type tenantHandler struct {
 	im              im.IdentityManagementInterface
+	opTenantGroup   optenant.OpTenantOperator
 	tenant          tenant.Interface
 	meteringOptions *meteringclient.Options
 }
 
-func newTenantHandler(im im.IdentityManagementInterface, factory informers.InformerFactory, k8sclient kubernetes.Interface, ksclient kubesphere.Interface,
-	evtsClient events.Client, loggingClient logging.Client, auditingclient auditing.Client,
-	am am.AccessManagementInterface, authorizer authorizer.Authorizer,
-	monitoringclient monitoringclient.Interface, resourceGetter *resourcev1alpha3.ResourceGetter,
+func newTenantHandler(tenant tenant.Interface, opTenantGroup optenant.OpTenantOperator, im im.IdentityManagementInterface,
 	meteringOptions *meteringclient.Options) *tenantHandler {
 
 	if meteringOptions == nil || meteringOptions.RetentionDay == "" {
@@ -69,8 +58,9 @@ func newTenantHandler(im im.IdentityManagementInterface, factory informers.Infor
 	}
 
 	return &tenantHandler{
+		opTenantGroup:   opTenantGroup,
 		im:              im,
-		tenant:          tenant.New(factory, k8sclient, ksclient, evtsClient, loggingClient, auditingclient, am, authorizer, monitoringclient, resourceGetter),
+		tenant:          tenant,
 		meteringOptions: meteringOptions,
 	}
 }
@@ -108,6 +98,21 @@ func (h *tenantHandler) ListWorkspaces(req *restful.Request, resp *restful.Respo
 
 	result, err := h.tenant.ListWorkspaces(user, queryParam)
 
+	for i, item := range result.Items {
+		workspace := item.(*tenantv1alpha2.WorkspaceTemplate)
+		workspace = workspace.DeepCopy()
+		//查询用户所属租户名称
+		opTenant, err := h.opTenantGroup.DescribeOpTenant(workspace.Spec.OpTenantId)
+		if err != nil {
+			api.HandleInternalError(resp, req, err)
+			return
+		}
+		if opTenant != nil {
+			tenantName := opTenant.Spec.TenantName
+			workspace.Spec.OpTenantName = tenantName
+		}
+		result.Items[i] = workspace
+	}
 	if err != nil {
 		api.HandleInternalError(resp, nil, err)
 		return

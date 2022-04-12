@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"kubesphere.io/kubesphere/pkg/models/optenant"
+	"kubesphere.io/kubesphere/pkg/models/tenant"
 	"kubesphere.io/kubesphere/pkg/server/errors"
 	"net/http"
 
@@ -42,9 +43,9 @@ const (
 
 var GroupVersion = schema.GroupVersion{Group: GroupName, Version: "v1alpha1"}
 
-func AddToContainer(container *restful.Container, im im.IdentityManagementInterface, am am.AccessManagementInterface, group optenant.OpTenantOperator, authorizer authorizer.Authorizer) error {
+func AddToContainer(tenant tenant.Interface, container *restful.Container, im im.IdentityManagementInterface, am am.AccessManagementInterface, group optenant.OpTenantOperator, authorizer authorizer.Authorizer) error {
 	ws := runtime.NewWebService(GroupVersion)
-	handler := newOPTEANTHandler(im, am, group, authorizer)
+	handler := newOPTEANTHandler(tenant, im, am, group, authorizer)
 
 	// 新增租户信息
 	ws.Route(ws.POST("/optenants").

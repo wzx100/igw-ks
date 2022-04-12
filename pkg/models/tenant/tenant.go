@@ -73,6 +73,7 @@ import (
 const orphanFinalizer = "orphan.finalizers.kubesphere.io"
 
 type Interface interface {
+	ListWorkspacesAll(query *query.Query) (*api.ListResult, error)
 	ListWorkspaces(user user.Info, query *query.Query) (*api.ListResult, error)
 	ListNamespaces(user user.Info, workspace string, query *query.Query) (*api.ListResult, error)
 	ListDevOpsProjects(user user.Info, workspace string, query *query.Query) (*api.ListResult, error)
@@ -133,7 +134,14 @@ func New(informers informers.InformerFactory, k8sclient kubernetes.Interface, ks
 		opRelease:      openpitrixRelease,
 	}
 }
-
+func (t *tenantOperator) ListWorkspacesAll(queryParam *query.Query) (*api.ListResult, error) {
+	result, err := t.resourceGetter.List(tenantv1alpha2.ResourcePluralWorkspaceTemplate, "", queryParam)
+	if err != nil {
+		klog.Error(err)
+		return nil, err
+	}
+	return result, nil
+}
 func (t *tenantOperator) ListWorkspaces(user user.Info, queryParam *query.Query) (*api.ListResult, error) {
 
 	listWS := authorizer.AttributesRecord{

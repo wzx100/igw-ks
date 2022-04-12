@@ -39,6 +39,8 @@ spec:
             properties:
               optenantid:
                 type: string
+              optenantname:
+                type: string
               overrides:
                 items:
                   properties:

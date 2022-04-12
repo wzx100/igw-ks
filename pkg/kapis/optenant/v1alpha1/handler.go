@@ -19,10 +19,17 @@ package v1alpha1
 import (
 	"fmt"
 	"github.com/emicklei/go-restful"
+	"k8s.io/apimachinery/pkg/api/errors"
 	optenantv1alpha1 "kubesphere.io/api/optenant/v1alpha1"
+	tenantv1alpha1 "kubesphere.io/api/optenant/v1alpha1"
+	tenantv1alpha2 "kubesphere.io/api/tenant/v1alpha2"
 	"kubesphere.io/kubesphere/pkg/api"
 	"kubesphere.io/kubesphere/pkg/apiserver/authorization/authorizer"
 	"kubesphere.io/kubesphere/pkg/apiserver/query"
+	apirequest "kubesphere.io/kubesphere/pkg/apiserver/request"
+	"kubesphere.io/kubesphere/pkg/models/tenant"
+	"strings"
+
 	"kubesphere.io/kubesphere/pkg/models/auth"
 	"kubesphere.io/kubesphere/pkg/models/iam/am"
 	"kubesphere.io/kubesphere/pkg/models/iam/im"
@@ -47,6 +54,7 @@ type PasswordReset struct {
 }
 
 type optenantHandler struct {
+	tenant        tenant.Interface
 	am            am.AccessManagementInterface
 	im            im.IdentityManagementInterface
 	tokenOperator auth.TokenManagementInterface
@@ -54,8 +62,9 @@ type optenantHandler struct {
 	authorizer    authorizer.Authorizer
 }
 
-func newOPTEANTHandler(im im.IdentityManagementInterface, am am.AccessManagementInterface, group optenant.OpTenantOperator, authorizer authorizer.Authorizer) *optenantHandler {
+func newOPTEANTHandler(tenant tenant.Interface, im im.IdentityManagementInterface, am am.AccessManagementInterface, group optenant.OpTenantOperator, authorizer authorizer.Authorizer) *optenantHandler {
 	return &optenantHandler{
+		tenant:     tenant,
 		am:         am,
 		im:         im,
 		group:      group,
@@ -81,13 +90,61 @@ func (h *optenantHandler) DescribeOpTeant(request *restful.Request, response *re
 func (h *optenantHandler) ListOpTenants(request *restful.Request, response *restful.Response) {
 	//optenantName := request.PathParameter("optenant")
 	queryParam := query.ParseQueryParameter(request)
+	operator, ok := apirequest.UserFrom(request.Request.Context())
+	if !ok {
+		err := errors.NewInternalError(fmt.Errorf("cannot obtain user info"))
+		api.HandleInternalError(response, request, err)
+		return
+	}
+	operatoruser, err := h.im.DescribeUser(operator.GetName())
+	if err != nil {
+		fmt.Println("=========查询用户信息异常======", err.Error())
+		api.HandleInternalError(response, request, err)
+		return
+	}
+	if operatoruser == nil {
+		fmt.Println("==========查询用户信息为空===========")
+		api.HandleError(response, request, fmt.Errorf("==========查询用户信息为空==========="))
+		return
+	}
+	if operatoruser.Spec.OpTenantId != "" {
+		queryParam.Filters["optenantid"] = query.Value(operatoruser.Spec.OpTenantId)
+	}
 	result, err := h.group.ListOpTenants(queryParam)
+	for i, item := range result.Items {
+		opTenant := item.(*tenantv1alpha1.OpTenant)
+		queryParam.Filters["optenantid"] = query.Value(opTenant.Name)
+		queryResult, _ := h.tenant.ListWorkspacesAll(queryParam)
+		workspaces := make([]string, 0)
+		for _, obj := range queryResult.Items {
+			workspace := obj.(*tenantv1alpha2.WorkspaceTemplate)
+			workspaceName := workspace.Name
+
+			// label matching selector, remove duplicate entity
+			if !contains(workspaces, workspaceName) {
+				workspaces = append(workspaces, workspaceName)
+
+			}
+		}
+		str := strings.Replace(strings.Trim(fmt.Sprint(workspaces), "[]"), " ", ",", -1)
+		opTenant.Spec.RelatedWorkSpaces = str
+
+		result.Items[i] = opTenant
+	}
 	if err != nil {
 		api.HandleError(response, request, err)
 		return
 	}
 
 	response.WriteEntity(result)
+}
+func contains(objects []string, workspaceName string) bool {
+	for _, item := range objects {
+		if item == workspaceName {
+			return true
+		}
+	}
+	return false
 }
 
 //创建租户

@@ -95,7 +95,9 @@ import (
 	"kubesphere.io/kubesphere/pkg/models/iam/im"
 	"kubesphere.io/kubesphere/pkg/models/optenant"
 	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/loginrecord"
+	resourcev1alpha4 "kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/resource"
 	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/user"
+	"kubesphere.io/kubesphere/pkg/models/tenant"
 	"kubesphere.io/kubesphere/pkg/simple/client/alerting"
 	"kubesphere.io/kubesphere/pkg/simple/client/auditing"
 	"kubesphere.io/kubesphere/pkg/simple/client/cache"
@@ -224,8 +226,7 @@ func (s *APIServer) installKubeSphereAPIs() {
 	urlruntime.Must(operationsv1alpha2.AddToContainer(s.container, s.KubernetesClient.Kubernetes()))
 	urlruntime.Must(resourcesv1alpha2.AddToContainer(s.container, s.KubernetesClient.Kubernetes(), s.InformerFactory,
 		s.KubernetesClient.Master()))
-	urlruntime.Must(tenantv1alpha2.AddToContainer(imOperator, s.container, s.InformerFactory, s.KubernetesClient.Kubernetes(),
-		s.KubernetesClient.KubeSphere(), s.EventsClient, s.LoggingClient, s.AuditingClient, amOperator, rbacAuthorizer, s.MonitoringClient, s.RuntimeCache, s.Config.MeteringOptions))
+
 	urlruntime.Must(terminalv1alpha2.AddToContainer(s.container, s.KubernetesClient.Kubernetes(), rbacAuthorizer, s.KubernetesClient.Config(), s.Config.TerminalOptions))
 	urlruntime.Must(clusterkapisv1alpha1.AddToContainer(s.container,
 		s.KubernetesClient.KubeSphere(),
@@ -234,11 +235,16 @@ func (s *APIServer) installKubeSphereAPIs() {
 		s.Config.MultiClusterOptions.ProxyPublishService,
 		s.Config.MultiClusterOptions.ProxyPublishAddress,
 		s.Config.MultiClusterOptions.AgentImage))
+	resourceGetter := resourcev1alpha4.NewResourceGetter(s.InformerFactory, s.RuntimeCache)
+	tenantInterface := tenant.New(s.InformerFactory, s.KubernetesClient.Kubernetes(), s.KubernetesClient.KubeSphere(), s.EventsClient, s.LoggingClient, s.AuditingClient, amOperator, rbacAuthorizer, s.MonitoringClient, resourceGetter)
 	opTenantOperator := optenant.New(s.InformerFactory, s.KubernetesClient.KubeSphere(), s.KubernetesClient.Kubernetes())
+
+	urlruntime.Must(tenantv1alpha2.AddToContainer(tenantInterface, opTenantOperator, imOperator, s.container, s.Config.MeteringOptions))
+
 	urlruntime.Must(iamapi.AddToContainer(opTenantOperator, s.container, imOperator, amOperator,
 		group.New(s.InformerFactory, s.KubernetesClient.KubeSphere(), s.KubernetesClient.Kubernetes()),
 		rbacAuthorizer))
-	urlruntime.Must(optenant1alpha1.AddToContainer(s.container, imOperator, amOperator, opTenantOperator,
+	urlruntime.Must(optenant1alpha1.AddToContainer(tenantInterface, s.container, imOperator, amOperator, opTenantOperator,
 		rbacAuthorizer))
 
 	userLister := s.InformerFactory.KubeSphereSharedInformerFactory().Iam().V1alpha2().Users().Lister()

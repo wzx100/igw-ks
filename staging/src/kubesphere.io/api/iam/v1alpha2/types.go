@@ -69,6 +69,7 @@ const (
 	ServiceAccountReferenceLabel          = "iam.kubesphere.io/serviceaccount-ref"
 	FieldEmail                            = "email"
 	FieldOptenantId                       = "optenantid"
+	FieldOptenantName                     = "tenantname"
 	FieldOpuid                            = "opuid"
 	ExtraEmail                            = FieldEmail
 	ExtraIdentityProvider                 = "idp"

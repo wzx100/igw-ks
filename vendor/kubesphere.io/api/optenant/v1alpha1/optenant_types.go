@@ -36,6 +36,8 @@ type OpTenantSpec struct {
 	// TenantName is an example field of OpTenant. Edit optenant_types.go to remove/update
 	TenantName string `json:"tenantname,omitempty"`
 
+	RelatedWorkSpaces string `json:"relatedworkspaces,omitempty"`
+
 	// TenantAdmin is an example field of OpTenant. Edit optenant_types.go to remove/update
 	TenantAdmin string `json:"tenantadmin,omitempty"`
 }
