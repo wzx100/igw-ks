@@ -17,11 +17,13 @@ limitations under the License.
 package user
 
 import (
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8sinformers "k8s.io/client-go/informers"
 	"k8s.io/klog"
+	"strings"
 
 	iamv1alpha2 "kubesphere.io/api/iam/v1alpha2"
 	tenantv1alpha1 "kubesphere.io/api/tenant/v1alpha1"
@@ -82,10 +84,113 @@ func (d *usersGetter) List(_ string, query *query.Query) (*api.ListResult, error
 
 	var result []runtime.Object
 	for _, user := range users {
+		tenantname := string(query.Filters["tenantname"])
+		if tenantname != "" {
+			//查询租户信息
+			opTenantId := user.Spec.OpTenantId
+			opTenant, _ := d.ksInformer.OpTenant().V1alpha1().OpTenants().Lister().Get(opTenantId)
+			if opTenant != nil && opTenant.Spec.TenantName != "" {
+				if !strings.Contains(opTenant.Spec.TenantName, tenantname) {
+					continue
+				}
+			}
+		}
+		workspacenames := string(query.Filters["workspacenames"])
+		if workspacenames != "" {
+			//查询租户信息
+			globalRoleBindings, err := d.ksInformer.Iam().V1alpha2().WorkspaceRoleBindings().Lister().List(query.Selector())
+			if err != nil {
+				return nil, err
+			}
+
+			var globalRoleBindingResult []runtime.Object
+			for _, globalRoleBinding := range globalRoleBindings {
+				globalRoleBindingResult = append(globalRoleBindingResult, globalRoleBinding)
+			}
+			workspaceRoleBindings := make([]*iamv1alpha2.WorkspaceRoleBinding, 0)
+			for _, obj := range globalRoleBindingResult {
+				roleBinding := obj.(*iamv1alpha2.WorkspaceRoleBinding)
+				if subjectsContains(roleBinding.Subjects, user.Name, nil) {
+					workspaceRoleBindings = append(workspaceRoleBindings, roleBinding)
+				}
+			}
+			flag := false
+			for _, roleBinding := range workspaceRoleBindings {
+				workspaceName := roleBinding.Labels[tenantv1alpha1.WorkspaceLabel]
+
+				// label matching selector, remove duplicate entity
+				if strings.Contains(workspaceName, workspacenames) {
+					flag = true
+					break
+				}
+			}
+			if !flag {
+				continue
+			}
+		}
+		rolename := string(query.Filters["rolename"])
+		{
+			globalRoleBindings, err := d.ksInformer.Iam().V1alpha2().GlobalRoleBindings().Lister().List(query.Selector())
+
+			if err != nil {
+				return nil, err
+			}
+			containGlobalRoleBindings := make([]*iamv1alpha2.GlobalRoleBinding, 0)
+			for _, obj := range globalRoleBindings {
+				if globalRoleContains(obj.Subjects, user.Name, nil) {
+					containGlobalRoleBindings = append(containGlobalRoleBindings, obj)
+				}
+			}
+			flag := false
+			for _, roleBinding := range containGlobalRoleBindings {
+				globalRoleName := roleBinding.RoleRef.Name
+
+				// label matching selector, remove duplicate entity
+				if strings.Contains(globalRoleName, rolename) {
+					flag = true
+					break
+				}
+			}
+			if !flag {
+				continue
+			}
+
+		}
 		result = append(result, user)
 	}
 
 	return v1alpha3.DefaultList(result, query, d.compare, d.filter), nil
+}
+func globalRoleContains(subjects []rbacv1.Subject, username string, groups []string) bool {
+	// if username is nil means list all role bindings
+	if username == "" {
+		return true
+	}
+	for _, subject := range subjects {
+		if subject.Kind == rbacv1.UserKind && subject.Name == username {
+			return true
+		}
+		if subject.Kind == rbacv1.GroupKind && sliceutil.HasString(groups, subject.Name) {
+			return true
+		}
+	}
+	return false
+}
+
+func subjectsContains(subjects []rbacv1.Subject, username string, groups []string) bool {
+	// if username is nil means list all role bindings
+	if username == "" {
+		return true
+	}
+	for _, subject := range subjects {
+		if subject.Kind == rbacv1.UserKind && subject.Name == username {
+			return true
+		}
+		if subject.Kind == rbacv1.GroupKind && sliceutil.HasString(groups, subject.Name) {
+			return true
+		}
+	}
+	return false
 }
 
 func (d *usersGetter) compare(left runtime.Object, right runtime.Object, field query.Field) bool {
@@ -111,8 +216,16 @@ func (d *usersGetter) filter(object runtime.Object, filter query.Filter) bool {
 	}
 
 	switch filter.Field {
+	case "tenantname":
+		return true
+	case "workspacenames":
+		return true
+	case "rolename":
+		return true
 	case iamv1alpha2.FieldOptenantId:
 		return user.Spec.OpTenantId == string(filter.Value)
+	case iamv1alpha2.ExtraUsername:
+		return strings.Contains(user.Name, string(filter.Value))
 	case iamv1alpha2.FieldOpuid:
 		return user.Spec.Opuid == string(filter.Value)
 	case iamv1alpha2.FieldEmail:
