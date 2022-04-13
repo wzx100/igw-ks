@@ -22,6 +22,9 @@ import (
 	"fmt"
 	"io"
 	iamv1alpha2 "kubesphere.io/api/iam/v1alpha2"
+	optenantv1alpha1 "kubesphere.io/api/optenant/v1alpha1"
+	resourcesv1alpha1 "kubesphere.io/kubesphere/pkg/models/resources/v1alpha1/resource"
+
 	"strings"
 	"time"
 
@@ -103,6 +106,7 @@ type Interface interface {
 }
 
 type tenantOperator struct {
+	optenantGetter resourcesv1alpha1.ResourceGetter
 	am             am.AccessManagementInterface
 	authorizer     authorizer.Authorizer
 	k8sclient      kubernetes.Interface
@@ -115,13 +119,14 @@ type tenantOperator struct {
 	opRelease      openpitrix.ReleaseInterface
 }
 
-func New(informers informers.InformerFactory, k8sclient kubernetes.Interface, ksclient kubesphere.Interface, evtsClient eventsclient.Client, loggingClient loggingclient.Client, auditingclient auditingclient.Client, am am.AccessManagementInterface, authorizer authorizer.Authorizer, monitoringclient monitoringclient.Interface, resourceGetter *resourcev1alpha3.ResourceGetter) Interface {
+func New(optenantGetter resourcesv1alpha1.ResourceGetter, informers informers.InformerFactory, k8sclient kubernetes.Interface, ksclient kubesphere.Interface, evtsClient eventsclient.Client, loggingClient loggingclient.Client, auditingclient auditingclient.Client, am am.AccessManagementInterface, authorizer authorizer.Authorizer, monitoringclient monitoringclient.Interface, resourceGetter *resourcev1alpha3.ResourceGetter) Interface {
 	var openpitrixRelease openpitrix.ReleaseInterface
 	if ksclient != nil {
 		openpitrixRelease = openpitrix.NewOpenpitrixOperator(informers, ksclient, nil)
 	}
 
 	return &tenantOperator{
+		optenantGetter: optenantGetter,
 		am:             am,
 		authorizer:     authorizer,
 		resourceGetter: resourcesv1alpha3.NewResourceGetter(informers, nil),
@@ -189,6 +194,28 @@ func (t *tenantOperator) ListWorkspaces(user user.Info, queryParam *query.Query)
 			return nil, err
 		}
 		workspace := obj.(*tenantv1alpha2.WorkspaceTemplate)
+
+		optenant, err := t.optenantGetter.Get("optenants", "", workspace.Spec.OpTenantId)
+		if err != nil {
+			return nil, err
+		}
+		ns := optenant.(*optenantv1alpha1.OpTenant)
+		value1 := queryParam.Filters["workspacename"]
+		if string(value1) != "" {
+			strVal := string(value1)
+			if !strings.Contains(workspace.ObjectMeta.Name, strVal) {
+				continue
+			}
+		}
+
+		value2 := queryParam.Filters["tenantname"]
+		if string(value2) != "" {
+			strVal := string(value2)
+			if !strings.Contains(ns.Spec.TenantName, strVal) {
+				continue
+			}
+		}
+
 		// label matching selector, remove duplicate entity
 		if queryParam.Selector().Matches(labels.Set(workspace.Labels)) &&
 			!contains(workspaces, workspace) {

@@ -238,6 +238,15 @@ func (h *tenantHandler) CreateWorkspace(request *restful.Request, response *rest
 		api.HandleBadRequest(response, request, err)
 		return
 	}
+	optenant, err := h.opTenantGroup.DescribeOpTenant(workspace.Spec.OpTenantId)
+	if err != nil {
+		klog.Error(err)
+		api.HandleBadRequest(response, request, err)
+		return
+	}
+	if optenant != nil {
+		workspace.Spec.OpTenantName = optenant.Spec.TenantName
+	}
 
 	created, err := h.tenant.CreateWorkspace(&workspace)
 

@@ -54,9 +54,9 @@ type optenantOperator struct {
 	resourceGetter *resourcesv1alpha1.ResourceGetter
 }
 
-func New(informers informers.InformerFactory, ksclient kubesphere.Interface, k8sclient kubernetes.Interface) OpTenantOperator {
+func New(resourceGetter *resourcesv1alpha1.ResourceGetter, informers informers.InformerFactory, ksclient kubesphere.Interface, k8sclient kubernetes.Interface) OpTenantOperator {
 	return &optenantOperator{
-		resourceGetter: resourcesv1alpha1.NewResourceGetter(informers, nil),
+		resourceGetter: resourceGetter,
 		k8sclient:      k8sclient,
 		ksclient:       ksclient,
 	}

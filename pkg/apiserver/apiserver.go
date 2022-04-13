@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	hellokubesphere "kubesphere.io/kubesphere/pkg/kapis/hellokubesphere/v1alpha1"
+	optenanatresourcesv1alpha1 "kubesphere.io/kubesphere/pkg/models/resources/v1alpha1/resource"
 	"net/http"
 	rt "runtime"
 	"strconv"
@@ -235,9 +236,11 @@ func (s *APIServer) installKubeSphereAPIs() {
 		s.Config.MultiClusterOptions.ProxyPublishService,
 		s.Config.MultiClusterOptions.ProxyPublishAddress,
 		s.Config.MultiClusterOptions.AgentImage))
+	optenantGetter := optenanatresourcesv1alpha1.NewResourceGetter(s.InformerFactory, nil)
+
 	resourceGetter := resourcev1alpha4.NewResourceGetter(s.InformerFactory, s.RuntimeCache)
-	tenantInterface := tenant.New(s.InformerFactory, s.KubernetesClient.Kubernetes(), s.KubernetesClient.KubeSphere(), s.EventsClient, s.LoggingClient, s.AuditingClient, amOperator, rbacAuthorizer, s.MonitoringClient, resourceGetter)
-	opTenantOperator := optenant.New(s.InformerFactory, s.KubernetesClient.KubeSphere(), s.KubernetesClient.Kubernetes())
+	tenantInterface := tenant.New(*optenantGetter, s.InformerFactory, s.KubernetesClient.Kubernetes(), s.KubernetesClient.KubeSphere(), s.EventsClient, s.LoggingClient, s.AuditingClient, amOperator, rbacAuthorizer, s.MonitoringClient, resourceGetter)
+	opTenantOperator := optenant.New(optenantGetter, s.InformerFactory, s.KubernetesClient.KubeSphere(), s.KubernetesClient.Kubernetes())
 
 	urlruntime.Must(tenantv1alpha2.AddToContainer(tenantInterface, opTenantOperator, imOperator, s.container, s.Config.MeteringOptions))
 

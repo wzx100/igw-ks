@@ -112,7 +112,7 @@ func labelMatch(labels map[string]string, filter string) bool {
 func DefaultObjectFilter(item *tenantv1alpha1.OpTenant, filter query.Filter) bool {
 	switch filter.Field {
 	case iamv1alpha2.FieldOptenantName:
-		return item.Spec.TenantName == string(filter.Value)
+		return strings.Contains(item.Spec.TenantName, string(filter.Value))
 	case iamv1alpha2.FieldOptenantId:
 		return item.Name == string(filter.Value)
 	case query.FieldNames:

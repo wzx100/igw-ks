@@ -84,6 +84,10 @@ func (d *workspaceGetter) filter(object runtime.Object, filter query.Filter) boo
 //  Default metadata filter
 func DefaultObjectFilter(item *tenantv1alpha2.WorkspaceTemplate, filter query.Filter) bool {
 	switch filter.Field {
+	case iamv1alpha2.FieldWorkSpaceName:
+		return strings.Contains(item.Name, string(filter.Value))
+	case iamv1alpha2.FieldOptenantName:
+		return strings.Contains(item.Spec.OpTenantName, string(filter.Value))
 	case iamv1alpha2.FieldOptenantId:
 		return item.Spec.OpTenantId == string(filter.Value)
 	case query.FieldNames:
