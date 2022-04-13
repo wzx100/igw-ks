@@ -113,6 +113,7 @@ func (h *optenantHandler) ListOpTenants(request *restful.Request, response *rest
 	result, err := h.group.ListOpTenants(queryParam)
 	for i, item := range result.Items {
 		opTenant := item.(*tenantv1alpha1.OpTenant)
+		opTenant = opTenant.DeepCopy()
 		queryParam.Filters["optenantid"] = query.Value(opTenant.Name)
 		queryResult, _ := h.tenant.ListWorkspacesAll(queryParam)
 		workspaces := make([]string, 0)

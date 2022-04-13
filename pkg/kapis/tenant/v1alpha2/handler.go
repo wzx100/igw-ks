@@ -291,8 +291,17 @@ func (h *tenantHandler) DeleteWorkspace(request *restful.Request, response *rest
 func (h *tenantHandler) UpdateWorkspace(request *restful.Request, response *restful.Response) {
 	workspaceName := request.PathParameter("workspace")
 	var workspace tenantv1alpha2.WorkspaceTemplate
-
 	err := request.ReadEntity(&workspace)
+
+	opTenant, err := h.opTenantGroup.DescribeOpTenant(workspace.Spec.OpTenantId)
+	if err != nil {
+		klog.Error(err)
+		api.HandleBadRequest(response, request, err)
+		return
+	}
+	if opTenant != nil {
+		workspace.Spec.OpTenantName = opTenant.Spec.TenantName
+	}
 
 	if err != nil {
 		klog.Error(err)
