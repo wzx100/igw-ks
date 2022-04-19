@@ -166,6 +166,67 @@ func (t *tenantOperator) ListWorkspaces(user user.Info, queryParam *query.Query)
 
 	// allowed to list all workspaces
 	if decision == authorizer.DecisionAllow {
+		if user.GetName() != "" {
+			loginuserGlobalRole, _ := t.am.GetGlobalRoleOfUser(user.GetName())
+			//如果是企业空间管理员,则查询绑定的企业空间
+			if loginuserGlobalRole != nil && loginuserGlobalRole.Name == "workspaces-manager" {
+				workspaceRoleBindings, err := t.am.ListWorkspaceRoleBindings(user.GetName(), user.GetGroups(), "")
+				if err != nil {
+					klog.Error(err)
+					return nil, err
+				}
+
+				workspaces := make([]runtime.Object, 0)
+				for _, roleBinding := range workspaceRoleBindings {
+					workspaceName := roleBinding.Labels[tenantv1alpha1.WorkspaceLabel]
+					obj, err := t.resourceGetter.Get(tenantv1alpha2.ResourcePluralWorkspaceTemplate, "", workspaceName)
+					if errors.IsNotFound(err) {
+						klog.Warningf("workspace role binding: %+v found but workspace not exist", roleBinding.Name)
+						continue
+					}
+					if err != nil {
+						klog.Error(err)
+						return nil, err
+					}
+					workspace := obj.(*tenantv1alpha2.WorkspaceTemplate)
+
+					optenant, err := t.optenantGetter.Get("optenants", "", workspace.Spec.OpTenantId)
+					if err != nil {
+						return nil, err
+					}
+					ns := optenant.(*optenantv1alpha1.OpTenant)
+					value1 := queryParam.Filters["workspacename"]
+					if string(value1) != "" {
+						strVal := string(value1)
+						if !strings.Contains(workspace.ObjectMeta.Name, strVal) {
+							continue
+						}
+					}
+
+					value2 := queryParam.Filters["tenantname"]
+					if string(value2) != "" {
+						strVal := string(value2)
+						if !strings.Contains(ns.Spec.TenantName, strVal) {
+							continue
+						}
+					}
+
+					// label matching selector, remove duplicate entity
+					if queryParam.Selector().Matches(labels.Set(workspace.Labels)) &&
+						!contains(workspaces, workspace) {
+						workspaces = append(workspaces, workspace)
+					}
+				}
+
+				// use default pagination search logic
+				result := resources.DefaultList(workspaces, queryParam, func(left runtime.Object, right runtime.Object, field query.Field) bool {
+					return resources.DefaultObjectMetaCompare(left.(*tenantv1alpha2.WorkspaceTemplate).ObjectMeta, right.(*tenantv1alpha2.WorkspaceTemplate).ObjectMeta, field)
+				}, DefaultObjectFilter)
+
+				return result, nil
+			}
+		}
+
 		result, err := t.resourceGetter.List(tenantv1alpha2.ResourcePluralWorkspaceTemplate, "", queryParam)
 		if err != nil {
 			klog.Error(err)
@@ -173,7 +234,7 @@ func (t *tenantOperator) ListWorkspaces(user user.Info, queryParam *query.Query)
 		}
 		return result, nil
 	}
-
+	delete(queryParam.Filters, "loginusername")
 	// retrieving associated resources through role binding
 	workspaceRoleBindings, err := t.am.ListWorkspaceRoleBindings(user.GetName(), user.GetGroups(), "")
 	if err != nil {
