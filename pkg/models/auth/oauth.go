@@ -20,7 +20,11 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	optenantv1alpha1 "kubesphere.io/api/optenant/v1alpha1"
+	"kubesphere.io/kubesphere/pkg/models/optenant"
 	"net/http"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,17 +43,21 @@ import (
 	iamv1alpha2listers "kubesphere.io/kubesphere/pkg/client/listers/iam/v1alpha2"
 )
 
+const MainInfoUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4-snapshot/portalcustomer/v1.0.0/maininfo/"
+
 type oauthAuthenticator struct {
-	ksClient   kubesphere.Interface
-	userGetter *userGetter
-	options    *authentication.Options
+	ksClient      kubesphere.Interface
+	userGetter    *userGetter
+	options       *authentication.Options
+	opTenantGroup optenant.OpTenantOperator
 }
 
-func NewOAuthAuthenticator(ksClient kubesphere.Interface, userLister iamv1alpha2listers.UserLister, options *authentication.Options) OAuthAuthenticator {
+func NewOAuthAuthenticator(opTenantGroup optenant.OpTenantOperator, ksClient kubesphere.Interface, userLister iamv1alpha2listers.UserLister, options *authentication.Options) OAuthAuthenticator {
 	authenticator := &oauthAuthenticator{
-		ksClient:   ksClient,
-		userGetter: &userGetter{userLister: userLister},
-		options:    options,
+		opTenantGroup: opTenantGroup,
+		ksClient:      ksClient,
+		userGetter:    &userGetter{userLister: userLister},
+		options:       options,
 	}
 	return authenticator
 }
@@ -107,6 +115,85 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 		fmt.Println("==========new opAccessToken为:", user.Spec.OpAccessToken, "========")
 
 	}
+
+	//查询租户信息
+	if user != nil && user.Spec.OpTenantId != "" && user.Spec.OpCustomerId != "" {
+		opMainInfoReq, err := http.NewRequest("GET", MainInfoUrl+"/"+user.Spec.OpTenantId, nil)
+		if err != nil {
+			return nil, providerOptions.Name, err
+		}
+		opMainInfoReq.Header.Set("Content-Type", "application/json")
+		opMainInfoReq.Header.Set("customer_id", user.Spec.OpCustomerId)
+		opMainInfoReq.Header.Set("tenant_id", user.Spec.OpTenantId)
+
+		client := http.Client{}
+		opResp, err := client.Do(opMainInfoReq) //Do 方法发送请求，返回 HTTP 回复
+		if err != nil {
+			fmt.Println("=========调用op新增用户接口异常======", err.Error())
+			return nil, providerOptions.Name, err
+		}
+		data, err := ioutil.ReadAll(opResp.Body)
+		if err != nil {
+			return nil, providerOptions.Name, err
+		}
+		defer opResp.Body.Close()
+		var userCenterResp UserCenterResp
+		err = json.Unmarshal(data, &userCenterResp)
+		if userCenterResp.Success == false {
+			var errorMessage string
+			if userCenterResp.Message != "" {
+				errorMessage = userCenterResp.Message
+			} else {
+				jsonByte, _ := json.Marshal(userCenterResp.Data)
+				errorMessage = string(jsonByte)
+			}
+			fmt.Println("调用op查询租户信息接口失败:", errorMessage)
+
+			err = errors.NewInternalError(fmt.Errorf(errorMessage))
+			return nil, providerOptions.Name, err
+		} else {
+			//如果成功获取到对应的id赋值给user\
+			//管理员名称
+			userName := userCenterResp.Data.UserName
+			//租户名称
+			mainName := userCenterResp.Data.MainName
+			mainId := userCenterResp.Data.MainId
+			opTenantInfo, err := o.opTenantGroup.DescribeOpTenant(mainId)
+			if opTenantInfo == nil {
+				//新增
+				objectMeta := metav1.ObjectMeta{
+					Name:         mainId,
+					GenerateName: mainId,
+				}
+				opTenantSpec := optenantv1alpha1.OpTenantSpec{TenantName: mainName, TenantAdmin: userName}
+				opTenantInfo := &optenantv1alpha1.OpTenant{
+					Spec:       opTenantSpec,
+					ObjectMeta: objectMeta,
+				}
+				_, err = o.opTenantGroup.CreateOpTenant(opTenantInfo)
+				if err != nil {
+					return nil, providerOptions.Name, err
+				}
+			} else {
+				//更新
+				objectMeta := metav1.ObjectMeta{
+					Name:            mainId,
+					ResourceVersion: opTenantInfo.ResourceVersion,
+				}
+				opTenantSpec := optenantv1alpha1.OpTenantSpec{TenantName: mainName, TenantAdmin: userName}
+				opTenantInfo := &optenantv1alpha1.OpTenant{
+					Spec:       opTenantSpec,
+					ObjectMeta: objectMeta,
+				}
+				_, err = o.opTenantGroup.UpdateOpTenant(opTenantInfo)
+				if err != nil {
+					return nil, providerOptions.Name, err
+				}
+			}
+		}
+
+	}
+
 	fmt.Println("===========>登录跳转成功结束<=========")
 
 	if user != nil {
@@ -114,4 +201,26 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 	}
 
 	return nil, "", errors.NewNotFound(iamv1alpha2.Resource("user"), authenticated.GetUsername())
+}
+
+type UserCenterResp struct {
+	Code    string             `json:"code"`
+	Message string             `json:"msg"`
+	Data    UserCenterRespData `json:"data"`
+	Success bool               `json:"success"`
+}
+
+type UserCenterRespData struct {
+	MainId      string `json:"mainId"`
+	Sex         string `json:"sex"`
+	AccountName string `json:"accountName"`
+	UserName    string `json:"userName"`
+	Cellphone   string `json:"cellphone"`
+	IsAdmin     string `json:"isAdmin"`
+	Status      string `json:"Status"`
+	MainName    string `json:"mainName"`
+	//onepower中的id
+	OnepowerID string `json:"id"`
+	//租户ID
+	TenantId string `json:"tenantId"`
 }

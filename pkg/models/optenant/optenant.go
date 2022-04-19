@@ -143,10 +143,6 @@ func (t *optenantOperator) DeleteOpTenant(name string) error {
 //func (t *optenantOperator) UpdateOpTenant(workspace string, group *optenantv1alpha1.OpTenant) (*optenantv1alpha1.OpTenant, error) {
 func (t *optenantOperator) UpdateOpTenant(optenant *optenantv1alpha1.OpTenant) (*optenantv1alpha1.OpTenant, error) {
 	//_, err := t.DescribeOpTenant(workspace, group.Name)
-	_, err := t.DescribeOpTenant(optenant.Name)
-	if err != nil {
-		return nil, err
-	}
 	//optenant = labelGroupWithWorkspaceName(optenant, workspace)
 	return t.ksclient.OpTenantV1alpha1().OpTenants().Update(context.Background(), optenant, metav1.UpdateOptions{})
 }

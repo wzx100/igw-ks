@@ -51,20 +51,22 @@ type Member struct {
 	Username string `json:"username"`
 	RoleRef  string `json:"roleRef"`
 }
-type userCenterResp struct {
+type UserCenterResp struct {
 	Code    string             `json:"code"`
 	Message string             `json:"msg"`
-	Data    userCenterRespData `json:"data"`
+	Data    UserCenterRespData `json:"data"`
 	Success bool               `json:"success"`
 }
 
-type userCenterRespData struct {
+type UserCenterRespData struct {
+	MainId      string `json:"mainId"`
 	Sex         string `json:"sex"`
 	AccountName string `json:"accountName"`
 	UserName    string `json:"userName"`
 	Cellphone   string `json:"cellphone"`
 	IsAdmin     string `json:"isAdmin"`
 	Status      string `json:"Status"`
+	MainName    string `json:"mainName"`
 	//onepower中的id
 	OnepowerID string `json:"id"`
 	//租户ID
@@ -327,6 +329,7 @@ func (h *iamHandler) ListUsers(request *restful.Request, response *restful.Respo
 		api.HandleError(response, request, fmt.Errorf("==========查询用户信息为空==========="))
 		return
 	}
+
 	if operatoruser.Spec.OpTenantId != "" {
 		queryParam.Filters["optenantid"] = query.Value(operatoruser.Spec.OpTenantId)
 	}
@@ -703,7 +706,7 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 			return
 		}
 		defer opResp.Body.Close()
-		var userCenterResp userCenterResp
+		var userCenterResp UserCenterResp
 		err = json.Unmarshal(data, &userCenterResp)
 		//if err != nil {
 		//	api.HandleInternalError(resp, req, err)
@@ -888,7 +891,7 @@ func (h *iamHandler) ModifyPassword(request *restful.Request, response *restful.
 			return
 		}
 		defer resp.Body.Close()
-		var userResp userCenterResp
+		var userResp UserCenterResp
 		err = json.Unmarshal(data, &userResp)
 		//if err != nil {
 		//	api.HandleInternalError(response, request, err)
@@ -955,7 +958,7 @@ func (h *iamHandler) ResetPassword(request *restful.Request, response *restful.R
 				return
 			}
 			defer resp.Body.Close()
-			var userResp userCenterResp
+			var userResp UserCenterResp
 			err = json.Unmarshal(data, &userResp)
 			//if err != nil {
 			//	api.HandleInternalError(response, request, err)
@@ -1034,7 +1037,7 @@ func (h *iamHandler) DeleteUser(request *restful.Request, response *restful.Resp
 				return
 			}
 			defer resp.Body.Close()
-			var userResp userCenterResp
+			var userResp UserCenterResp
 			err = json.Unmarshal(data, &userResp)
 			if err != nil {
 				api.HandleInternalError(response, request, err)

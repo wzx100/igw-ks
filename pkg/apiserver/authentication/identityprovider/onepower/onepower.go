@@ -124,7 +124,7 @@ func (o *onepowerProviderFactory) Create(options oauth.DynamicOptions) (identity
 }
 
 func (o onepowerIdentity) GetUserID() string {
-	return o.Data.OnepowerID
+	return o.Data.OriginalUserId
 }
 func (o onepowerIdentity) GetOpuid() string {
 	return o.Data.OriginalUserId
@@ -156,15 +156,6 @@ func (o onepowerIdentity) GetOpAccessToken() string {
 
 func GetOpToken() string {
 	return opTokenMap["accessOpToken"]
-}
-func GetCustomerId() string {
-	return opTokenMap["customerId"]
-}
-func GetDeptId() string {
-	return opTokenMap["deptId"]
-}
-func GetTenantId() string {
-	return opTokenMap["tenantId"]
 }
 
 func (o *onepower) IdentityExchangeCallback(req *http.Request) (identityprovider.Identity, error) {
