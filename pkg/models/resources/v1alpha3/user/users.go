@@ -129,32 +129,33 @@ func (d *usersGetter) List(_ string, query *query.Query) (*api.ListResult, error
 			}
 		}
 		rolename := string(query.Filters["rolename"])
-		{
-			globalRoleBindings, err := d.ksInformer.Iam().V1alpha2().GlobalRoleBindings().Lister().List(query.Selector())
+		if rolename != "" {
+			{
+				globalRoleBindings, err := d.ksInformer.Iam().V1alpha2().GlobalRoleBindings().Lister().List(query.Selector())
 
-			if err != nil {
-				return nil, err
-			}
-			containGlobalRoleBindings := make([]*iamv1alpha2.GlobalRoleBinding, 0)
-			for _, obj := range globalRoleBindings {
-				if globalRoleContains(obj.Subjects, user.Name, nil) {
-					containGlobalRoleBindings = append(containGlobalRoleBindings, obj)
+				if err != nil {
+					return nil, err
+				}
+				containGlobalRoleBindings := make([]*iamv1alpha2.GlobalRoleBinding, 0)
+				for _, obj := range globalRoleBindings {
+					if globalRoleContains(obj.Subjects, user.Name, nil) {
+						containGlobalRoleBindings = append(containGlobalRoleBindings, obj)
+					}
+				}
+				flag := false
+				for _, roleBinding := range containGlobalRoleBindings {
+					globalRoleName := roleBinding.RoleRef.Name
+
+					// label matching selector, remove duplicate entity
+					if strings.Contains(globalRoleName, rolename) {
+						flag = true
+						break
+					}
+				}
+				if !flag {
+					continue
 				}
 			}
-			flag := false
-			for _, roleBinding := range containGlobalRoleBindings {
-				globalRoleName := roleBinding.RoleRef.Name
-
-				// label matching selector, remove duplicate entity
-				if strings.Contains(globalRoleName, rolename) {
-					flag = true
-					break
-				}
-			}
-			if !flag {
-				continue
-			}
-
 		}
 		result = append(result, user)
 	}

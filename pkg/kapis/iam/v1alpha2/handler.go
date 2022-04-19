@@ -81,14 +81,17 @@ type userResp struct {
 const ChangePasswordUrl = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo/self/pwd"
 const finalizer = "finalizers.kubesphere.io/users"
 
-//const CreateUserUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4/portalcustomer/v1.0.0/user-center/userinfo"
-const CreateUserUrl = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo"
+const CreateUserUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4-snapshot/portalcustomer/v1.0.0/user-center/userinfo"
 
-//const DeleteUserUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4/portalcustomer/v1.0.0/user-center/userinfo/delete"
-const DeleteUserUrl = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo/delete"
+//const CreateUserUrl = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo"
 
-//const ResetUserPassword = "http://induscore.ftzq.internal.virtueit.net:81/v4/portalcustomer/v1.0.0/user-center/userinfo/resetpassword/"
-const ResetUserPassword = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo/resetpassword"
+const DeleteUserUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4-snapshot/portalcustomer/v1.0.0/user-center/userinfo/delete"
+
+//const DeleteUserUrl = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo/delete"
+
+const ResetUserPassword = "http://induscore.ftzq.internal.virtueit.net:81/v4-snapshot/portalcustomer/v1.0.0/user-center/userinfo/resetpassword/"
+
+//const ResetUserPassword = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo/resetpassword"
 
 type GroupMember struct {
 	UserName  string `json:"userName"`
@@ -345,14 +348,16 @@ func (h *iamHandler) ListUsers(request *restful.Request, response *restful.Respo
 			user = appendGlobalRoleAnnotation(user, globalRole.Name)
 		}
 		//查询用户所属租户名称
-		opTenant, err := h.opTenantGroup.DescribeOpTenant(user.Spec.OpTenantId)
-		if err != nil {
-			api.HandleInternalError(response, request, err)
-			return
-		}
-		if opTenant != nil {
-			tenantName := opTenant.Spec.TenantName
-			user.Spec.OpTenantName = tenantName
+		if user.Spec.OpTenantId != "" {
+			opTenant, err := h.opTenantGroup.DescribeOpTenant(user.Spec.OpTenantId)
+			if err != nil {
+				api.HandleInternalError(response, request, err)
+				return
+			}
+			if opTenant != nil {
+				tenantName := opTenant.Spec.TenantName
+				user.Spec.OpTenantName = tenantName
+			}
 		}
 		//
 		workspaceRoleBindings, err := h.am.ListWorkspaceRoleBindings(user.ObjectMeta.Name, nil, "")
@@ -646,96 +651,89 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 	operatoruser, err := h.im.DescribeUser(operatorname)
 
 	if err != nil {
-		fmt.Println("=========查询用户信息异常======", err.Error())
-		api.HandleInternalError(resp, req, err)
-		return
+		fmt.Println("=========查询用户信息为空======", err.Error())
 	}
-	if operatoruser == nil {
-		fmt.Println("==========查询用户信息为空===========")
-		api.HandleError(resp, req, fmt.Errorf("==========查询用户信息为空==========="))
-		return
-	}
-	if operatoruser.Spec.OpTenantId == "" || operatoruser.Spec.OpCustomerId == "" || operatoruser.Spec.OpDeptId == "" {
-		fmt.Println("==========新增用户,获取当前登录用户为空===========")
-		api.HandleError(resp, req, fmt.Errorf("==========新增用户,获取当前登录用户为空==========="))
-		return
-	}
-	fmt.Println("========originalTenantId:", operatoruser.Spec.OpTenantId, ",originalCustomerId:", operatoruser.Spec.OpCustomerId, ",deptId:", operatoruser.Spec.OpDeptId, "==============")
-	//调用op新增用户接口
-	//JSON序列化
-	config := map[string]interface{}{}
-	//默认为非管理员
-	config["isAdmin"] = 0
-	//状态为启用
-	config["status"] = 1
-	//状态为启用
-	config["deptId"] = operatoruser.Spec.OpDeptId
-	//config["deptId"] = "1329701508497645570"
+	if operatoruser != nil && operatoruser.Spec.OpTenantId != "" && operatoruser.Spec.OpCustomerId != "" && operatoruser.Spec.OpDeptId != "" {
+		fmt.Println("========originalTenantId:", operatoruser.Spec.OpTenantId, ",originalCustomerId:", operatoruser.Spec.OpCustomerId, ",deptId:", operatoruser.Spec.OpDeptId, "==============")
+		//调用op新增用户接口
+		//JSON序列化
+		config := map[string]interface{}{}
+		//默认为非管理员
+		config["isAdmin"] = 0
+		//状态为启用
+		config["status"] = 1
+		//状态为启用
+		config["deptId"] = operatoruser.Spec.OpDeptId
+		//config["deptId"] = "1329701508497645570"
 
-	if user.ObjectMeta.Name != "" {
-		config["userName"] = user.ObjectMeta.Name
-		config["accountName"] = user.ObjectMeta.Name
-	}
-	config["sex"] = user.Spec.Sex
-	config["cellphone"] = user.Spec.Cellphone
-
-	configData, _ := json.Marshal(config)
-	param := bytes.NewBuffer([]byte(configData))
-	// only the user manager can modify the password without verifying the old password
-	// if old password is defined must be verified
-
-	opCreateReq, err := http.NewRequest("POST", CreateUserUrl, param)
-	if err != nil {
-		api.HandleInternalError(resp, req, err)
-		return
-	}
-	opCreateReq.Header.Set("Content-Type", "application/json")
-	opCreateReq.Header.Set("customer_id", operatoruser.Spec.OpCustomerId)
-	//opCreateReq.Header.Set("customer_id", "739865515899486208")
-	opCreateReq.Header.Set("tenant_id", operatoruser.Spec.OpTenantId)
-	//opCreateReq.Header.Set("tenant_id", "1329701507709116418")
-
-	defer opCreateReq.Body.Close()
-	client := http.Client{}
-	opResp, err := client.Do(opCreateReq) //Do 方法发送请求，返回 HTTP 回复
-	if err != nil {
-		fmt.Println("=========调用op新增用户接口异常======", err.Error())
-		api.HandleInternalError(resp, req, err)
-		return
-	}
-	data, err := ioutil.ReadAll(opResp.Body)
-	if err != nil {
-		api.HandleInternalError(resp, req, err)
-		return
-	}
-	defer opResp.Body.Close()
-	var userCenterResp userCenterResp
-	err = json.Unmarshal(data, &userCenterResp)
-	//if err != nil {
-	//	api.HandleInternalError(resp, req, err)
-	//	return
-	//}
-	if userCenterResp.Success == false {
-		var errorMessage string
-		if userCenterResp.Message != "" {
-			errorMessage = userCenterResp.Message
-		} else {
-			jsonByte, _ := json.Marshal(userCenterResp.Data)
-			errorMessage = string(jsonByte)
+		if user.ObjectMeta.Name != "" {
+			config["userName"] = user.ObjectMeta.Name
+			config["accountName"] = user.ObjectMeta.Name
 		}
-		fmt.Println("调用op新增用户接口失败:", errorMessage)
+		config["sex"] = user.Spec.Sex
+		config["cellphone"] = user.Spec.Cellphone
 
-		err = errors.NewInternalError(fmt.Errorf(errorMessage))
-		api.HandleInternalError(resp, req, err)
-		return
+		configData, _ := json.Marshal(config)
+		param := bytes.NewBuffer([]byte(configData))
+		// only the user manager can modify the password without verifying the old password
+		// if old password is defined must be verified
+
+		opCreateReq, err := http.NewRequest("POST", CreateUserUrl, param)
+		if err != nil {
+			api.HandleInternalError(resp, req, err)
+			return
+		}
+		opCreateReq.Header.Set("Content-Type", "application/json")
+		opCreateReq.Header.Set("customer_id", operatoruser.Spec.OpCustomerId)
+		//opCreateReq.Header.Set("customer_id", "739865515899486208")
+		opCreateReq.Header.Set("tenant_id", operatoruser.Spec.OpTenantId)
+		//opCreateReq.Header.Set("tenant_id", "1329701507709116418")
+
+		defer opCreateReq.Body.Close()
+		client := http.Client{}
+		opResp, err := client.Do(opCreateReq) //Do 方法发送请求，返回 HTTP 回复
+		if err != nil {
+			fmt.Println("=========调用op新增用户接口异常======", err.Error())
+			api.HandleInternalError(resp, req, err)
+			return
+		}
+		data, err := ioutil.ReadAll(opResp.Body)
+		if err != nil {
+			api.HandleInternalError(resp, req, err)
+			return
+		}
+		defer opResp.Body.Close()
+		var userCenterResp userCenterResp
+		err = json.Unmarshal(data, &userCenterResp)
+		//if err != nil {
+		//	api.HandleInternalError(resp, req, err)
+		//	return
+		//}
+		if userCenterResp.Success == false {
+			var errorMessage string
+			if userCenterResp.Message != "" {
+				errorMessage = userCenterResp.Message
+			} else {
+				jsonByte, _ := json.Marshal(userCenterResp.Data)
+				errorMessage = string(jsonByte)
+			}
+			fmt.Println("调用op新增用户接口失败:", errorMessage)
+
+			err = errors.NewInternalError(fmt.Errorf(errorMessage))
+			api.HandleInternalError(resp, req, err)
+			return
+		} else {
+			//如果成功获取到对应的id赋值给user
+			var userResp userResp
+			err = json.Unmarshal(data, &userResp)
+			opuid := userResp.Data
+			fmt.Println("==========获取到返回的op用户uid为:", opuid, "=========")
+			user.Spec.Opuid = opuid
+		}
 	} else {
-		//如果成功获取到对应的id赋值给user
-		var userResp userResp
-		err = json.Unmarshal(data, &userResp)
-		opuid := userResp.Data
-		fmt.Println("==========获取到返回的op用户uid为:", opuid, "=========")
-		user.Spec.Opuid = opuid
+		fmt.Println("==========查询用户op部分信息为空,新增的为超级管理员=========")
 	}
+
 	user.ObjectMeta.Finalizers = append(user.ObjectMeta.Finalizers, finalizer)
 	active := iamv1alpha2.UserActive
 	user.Status = iamv1alpha2.UserStatus{

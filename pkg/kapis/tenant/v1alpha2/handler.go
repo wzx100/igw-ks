@@ -101,15 +101,17 @@ func (h *tenantHandler) ListWorkspaces(req *restful.Request, resp *restful.Respo
 	for i, item := range result.Items {
 		workspace := item.(*tenantv1alpha2.WorkspaceTemplate)
 		workspace = workspace.DeepCopy()
-		//查询用户所属租户名称
-		opTenant, err := h.opTenantGroup.DescribeOpTenant(workspace.Spec.OpTenantId)
-		if err != nil {
-			api.HandleInternalError(resp, req, err)
-			return
-		}
-		if opTenant != nil {
-			tenantName := opTenant.Spec.TenantName
-			workspace.Spec.OpTenantName = tenantName
+		if workspace.Spec.OpTenantId != "" {
+			//查询用户所属租户名称
+			opTenant, err := h.opTenantGroup.DescribeOpTenant(workspace.Spec.OpTenantId)
+			if err != nil {
+				api.HandleInternalError(resp, req, err)
+				return
+			}
+			if opTenant != nil {
+				tenantName := opTenant.Spec.TenantName
+				workspace.Spec.OpTenantName = tenantName
+			}
 		}
 		result.Items[i] = workspace
 	}
