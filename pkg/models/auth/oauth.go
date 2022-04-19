@@ -103,6 +103,11 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 		if err != nil {
 			return nil, providerOptions.Name, err
 		}
+		byte, err := json.Marshal(user)
+		fmt.Println("==========新增用户信息为", string(byte), "========")
+		if err != nil {
+			return nil, providerOptions.Name, err
+		}
 		fmt.Println("=============>>新增用户成功<<==========")
 	} else {
 		//更新用户opAccessToken
