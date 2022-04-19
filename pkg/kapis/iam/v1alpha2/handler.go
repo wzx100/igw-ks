@@ -64,7 +64,7 @@ type UserCenterRespData struct {
 	AccountName string `json:"accountName"`
 	UserName    string `json:"userName"`
 	Cellphone   string `json:"cellphone"`
-	IsAdmin     string `json:"isAdmin"`
+	IsAdmin     int8   `json:"isAdmin"`
 	Status      string `json:"Status"`
 	MainName    string `json:"mainName"`
 	//onepower中的id

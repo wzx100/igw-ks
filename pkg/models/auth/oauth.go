@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	optenantv1alpha1 "kubesphere.io/api/optenant/v1alpha1"
+	"kubesphere.io/kubesphere/pkg/models/iam/am"
 	"kubesphere.io/kubesphere/pkg/models/optenant"
 	"net/http"
 
@@ -45,15 +46,20 @@ import (
 
 const MainInfoUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4-snapshot/portalcustomer/v1.0.0/maininfo/"
 
+const QueryUserInfoUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4-snapshot/portalcustomer/v1.0.0/user-center/userinfo/details"
+const IsAdmin = 1
+
 type oauthAuthenticator struct {
 	ksClient      kubesphere.Interface
 	userGetter    *userGetter
 	options       *authentication.Options
 	opTenantGroup optenant.OpTenantOperator
+	am            am.AccessManagementInterface
 }
 
-func NewOAuthAuthenticator(opTenantGroup optenant.OpTenantOperator, ksClient kubesphere.Interface, userLister iamv1alpha2listers.UserLister, options *authentication.Options) OAuthAuthenticator {
+func NewOAuthAuthenticator(am am.AccessManagementInterface, opTenantGroup optenant.OpTenantOperator, ksClient kubesphere.Interface, userLister iamv1alpha2listers.UserLister, options *authentication.Options) OAuthAuthenticator {
 	authenticator := &oauthAuthenticator{
+		am:            am,
 		opTenantGroup: opTenantGroup,
 		ksClient:      ksClient,
 		userGetter:    &userGetter{userLister: userLister},
@@ -133,6 +139,64 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 		fmt.Println("==========编辑后查询用户信息为", string(byte), "========")
 		fmt.Println("=============>>编辑用户结束<<==========")
 
+	}
+	//绑定角色
+	globalRoleBindings, err := o.am.ListGlobalRoleBindings(user.Name)
+	if len(globalRoleBindings) == 0 {
+		//没绑定角色则需要根据查询的信息 绑定角色
+		if user.Spec.OpCustomerId != "" && user.Spec.OpTenantId != "" {
+			opUserInfoReq, err := http.NewRequest("GET", QueryUserInfoUrl+"/"+user.Spec.OpCustomerId, nil)
+			if err != nil {
+				return nil, providerOptions.Name, err
+			}
+			opUserInfoReq.Header.Set("Content-Type", "application/json")
+			opUserInfoReq.Header.Set("customer_id", user.Spec.OpCustomerId)
+			opUserInfoReq.Header.Set("tenant_id", user.Spec.OpTenantId)
+
+			client := http.Client{}
+			opResp, err := client.Do(opUserInfoReq) //Do 方法发送请求，返回 HTTP 回复
+			if err != nil {
+				fmt.Println("=========调用op查询用户接口异常======", err.Error())
+				return nil, providerOptions.Name, err
+			}
+			data, err := ioutil.ReadAll(opResp.Body)
+			if err != nil {
+				return nil, providerOptions.Name, err
+			}
+			defer opResp.Body.Close()
+			var userCenterResp UserCenterResp
+			err = json.Unmarshal(data, &userCenterResp)
+			if userCenterResp.Success == false {
+				var errorMessage string
+				if userCenterResp.Message != "" {
+					errorMessage = userCenterResp.Message
+				} else {
+					jsonByte, _ := json.Marshal(userCenterResp.Data)
+					errorMessage = string(jsonByte)
+				}
+				fmt.Println("调用op查询用户信息接口失败:", errorMessage)
+
+				err = errors.NewInternalError(fmt.Errorf(errorMessage))
+				return nil, providerOptions.Name, err
+			} else {
+				isMain := userCenterResp.Data.IsAdmin
+				globalRole := ""
+				if isMain == IsAdmin {
+					//绑定租户管理员
+					globalRole = "platform-admin"
+				} else {
+					//绑定普通用户
+					globalRole = "platform-regular"
+				}
+				if globalRole != "" {
+					if err := o.am.CreateGlobalRoleBinding(user.Name, globalRole); err != nil {
+						return nil, providerOptions.Name, err
+					}
+				}
+
+			}
+
+		}
 	}
 
 	//查询租户信息
@@ -235,7 +299,7 @@ type UserCenterRespData struct {
 	AccountName string `json:"accountName"`
 	UserName    string `json:"userName"`
 	Cellphone   string `json:"cellphone"`
-	IsAdmin     string `json:"isAdmin"`
+	IsAdmin     int8   `json:"isAdmin"`
 	Status      string `json:"Status"`
 	MainName    string `json:"mainName"`
 	//onepower中的id
