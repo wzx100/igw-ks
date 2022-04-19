@@ -103,8 +103,10 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 		if err != nil {
 			return nil, providerOptions.Name, err
 		}
+		fmt.Println("=============>>新增用户成功<<==========")
 	} else {
 		//更新用户opAccessToken
+		fmt.Println("=============>>编辑用户开始<<==========")
 		fmt.Println("==========old opAccessToken为:", user.Spec.OpAccessToken, "========")
 		user.Spec.OpAccessToken = authenticated.GetOpAccessToken()
 		user.Spec.Opuid = authenticated.GetOpuid()
@@ -113,6 +115,18 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 		user.Spec.OpTenantId = authenticated.GetTenantId()
 		user, err = o.ksClient.IamV1alpha2().Users().Update(context.Background(), user, metav1.UpdateOptions{})
 		fmt.Println("==========new opAccessToken为:", user.Spec.OpAccessToken, "========")
+		byte, err := json.Marshal(user)
+		if err != nil {
+			return nil, providerOptions.Name, err
+		}
+		fmt.Println("==========编辑用户信息为", string(byte), "========")
+		queryUser, err := o.ksClient.IamV1alpha2().Users().Get(context.Background(), user.Name, metav1.GetOptions{})
+		byte, err = json.Marshal(queryUser)
+		if err != nil {
+			return nil, providerOptions.Name, err
+		}
+		fmt.Println("==========编辑后查询用户信息为", string(byte), "========")
+		fmt.Println("=============>>编辑用户结束<<==========")
 
 	}
 
