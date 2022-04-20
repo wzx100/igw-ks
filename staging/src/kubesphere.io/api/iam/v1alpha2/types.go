@@ -68,6 +68,7 @@ const (
 	OriginUIDLabel                        = "iam.kubesphere.io/origin-uid"
 	ServiceAccountReferenceLabel          = "iam.kubesphere.io/serviceaccount-ref"
 	FieldEmail                            = "email"
+	FieldIsDefault                        = "isDefault"
 	FieldOptenantId                       = "optenantid"
 	FieldWorkSpaceName                    = "workspacename"
 
@@ -220,7 +221,7 @@ type GolbalSpec struct {
 	//继承角色名
 	ExtendFrom string `json:"extendFrom,omitempty"`
 
-	IsDefault int8 `json:"IsDefault""`
+	IsDefault string `json:"IsDefault""`
 }
 
 // +kubebuilder:object:root=true

@@ -1133,7 +1133,7 @@ func (h *iamHandler) CreateGlobalRole(request *restful.Request, response *restfu
 		api.HandleBadRequest(response, request, err)
 		return
 	}
-	globalRole.Spec.IsDefault = 0
+	globalRole.Spec.IsDefault = ""
 	extendsfrom := globalRole.Spec.ExtendFrom
 	//如果是企业空间管理员
 	if extendsfrom == "workspaces-manager" {
@@ -1181,7 +1181,7 @@ func (h *iamHandler) UpdateGlobalRole(request *restful.Request, response *restfu
 		api.HandleBadRequest(response, request, err)
 		return
 	}
-	globalRole.Spec.IsDefault = 0
+	globalRole.Spec.IsDefault = ""
 	extendsfrom := globalRole.Spec.ExtendFrom
 	//如果是企业空间管理员
 	if extendsfrom == "workspaces-manager" {

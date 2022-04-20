@@ -96,6 +96,8 @@ func (d *globalrolesGetter) filter(object runtime.Object, filter query.Filter) b
 //  Default metadata filter
 func DefaultObjectFilter(item *iamv1alpha2.GlobalRole, filter query.Filter) bool {
 	switch filter.Field {
+	case iamv1alpha2.FieldIsDefault:
+		return item.Spec.IsDefault == string(filter.Value)
 	case iamv1alpha2.FieldOptenantId:
 		return item.Spec.OpTenantId == string(filter.Value) || item.Spec.OpTenantId == ""
 	case query.FieldNames:
