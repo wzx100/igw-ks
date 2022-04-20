@@ -169,7 +169,7 @@ func (t *tenantOperator) ListWorkspaces(user user.Info, queryParam *query.Query)
 		if user.GetName() != "" {
 			loginuserGlobalRole, _ := t.am.GetGlobalRoleOfUser(user.GetName())
 			//如果是企业空间管理员,则查询绑定的企业空间
-			if loginuserGlobalRole != nil && loginuserGlobalRole.Name == "workspaces-manager" {
+			if loginuserGlobalRole != nil && loginuserGlobalRole.Name == "workspaces-manager" || loginuserGlobalRole.Spec.ExtendFrom == "workspaces-manager" {
 				workspaceRoleBindings, err := t.am.ListWorkspaceRoleBindings(user.GetName(), user.GetGroups(), "")
 				if err != nil {
 					klog.Error(err)

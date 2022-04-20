@@ -1130,6 +1130,14 @@ func (h *iamHandler) CreateGlobalRole(request *restful.Request, response *restfu
 		api.HandleBadRequest(response, request, err)
 		return
 	}
+	extendsfrom := globalRole.Spec.ExtendFrom
+	//如果是企业空间管理员
+	if extendsfrom == "workspaces-manager" {
+		aggregateRolesAnnotation := globalRole.Annotations[iamv1alpha2.AggregationRolesAnnotation]
+		pos := strings.Index(aggregateRolesAnnotation, "[") + 1
+		newstring := aggregateRolesAnnotation[:pos] + "\"role-template-manage-workspaces-newdefine\"," + aggregateRolesAnnotation[pos:]
+		globalRole.Annotations[iamv1alpha2.AggregationRolesAnnotation] = newstring
+	}
 
 	opTenantId := globalRole.Spec.OpTenantId
 	if opTenantId == "" {
@@ -1168,6 +1176,14 @@ func (h *iamHandler) UpdateGlobalRole(request *restful.Request, response *restfu
 	if err != nil {
 		api.HandleBadRequest(response, request, err)
 		return
+	}
+	extendsfrom := globalRole.Spec.ExtendFrom
+	//如果是企业空间管理员
+	if extendsfrom == "workspaces-manager" {
+		aggregateRolesAnnotation := globalRole.Annotations[iamv1alpha2.AggregationRolesAnnotation]
+		pos := strings.Index(aggregateRolesAnnotation, "[") + 1
+		newstring := aggregateRolesAnnotation[:pos] + "\"role-template-manage-workspaces-newdefine\"," + aggregateRolesAnnotation[pos:]
+		globalRole.Annotations[iamv1alpha2.AggregationRolesAnnotation] = newstring
 	}
 
 	if globalRoleName != globalRole.Name {
