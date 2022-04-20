@@ -50,6 +50,8 @@ func (d *usersGetter) Get(_, name string) (runtime.Object, error) {
 
 func (d *usersGetter) List(_ string, query *query.Query) (*api.ListResult, error) {
 
+	loginusername := query.Filters["loginusername"]
+	delete(query.Filters, "loginusername")
 	var users []*iamv1alpha2.User
 	var err error
 
@@ -81,7 +83,24 @@ func (d *usersGetter) List(_ string, query *query.Query) (*api.ListResult, error
 	if err != nil {
 		return nil, err
 	}
-
+	if loginusername != "" {
+		globalRoleBindings, _ := d.ksInformer.Iam().V1alpha2().GlobalRoleBindings().Lister().List(query.Selector())
+		for _, globalRoleBinding := range globalRoleBindings {
+			if globalRoleBinding.Subjects[0].Name == string(loginusername) {
+				globalRole, _ := d.ksInformer.Iam().V1alpha2().GlobalRoles().Lister().Get(globalRoleBinding.RoleRef.Name)
+				if globalRole.Name == "workspaces-manager" || globalRole.Spec.ExtendFrom == "workspaces-manager" {
+					//说明是企业空间管理员,则查询该企业空间管理员绑定的用户
+					workspaceRoleBindings, _ := d.ksInformer.Iam().V1alpha2().WorkspaceRoleBindings().Lister().List(query.Selector())
+					for _, workspaceRoleBinding := range workspaceRoleBindings {
+						if workspaceRoleBinding.Subjects[0].Name == string(loginusername) {
+							workspaceName := strings.Split(workspaceRoleBinding.RoleRef.Name, "-")[0]
+							users, _ = d.listAllUsersInWorkspace(workspaceName, "")
+						}
+					}
+				}
+			}
+		}
+	}
 	var result []runtime.Object
 	for _, user := range users {
 		tenantname := string(query.Filters["tenantname"])

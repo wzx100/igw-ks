@@ -219,6 +219,8 @@ type GolbalSpec struct {
 	OpTenantId string `json:"optenantid,omitempty"`
 	//继承角色名
 	ExtendFrom string `json:"extendFrom,omitempty"`
+
+	IsDefault string `json:"IsDefault""`
 }
 
 // +kubebuilder:object:root=true

@@ -347,6 +347,9 @@ func (h *iamHandler) ListUsers(request *restful.Request, response *restful.Respo
 	if operatoruser.Spec.OpTenantId != "" {
 		queryParam.Filters["optenantid"] = query.Value(operatoruser.Spec.OpTenantId)
 	}
+	if operatoruser.Name != "" {
+		queryParam.Filters["loginusername"] = query.Value(operatoruser.Name)
+	}
 	result, err := h.im.ListUsers(queryParam)
 	if err != nil {
 		api.HandleInternalError(response, request, err)
