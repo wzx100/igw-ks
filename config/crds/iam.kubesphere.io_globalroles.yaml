@@ -85,6 +85,9 @@ spec:
             type: array
           spec:
             properties:
+              extendFrom:
+                description: 继承角色名
+                type: string
               optenantid:
                 description: Unique email address(https://www.ietf.org/rfc/rfc5322.txt).
                 type: string
