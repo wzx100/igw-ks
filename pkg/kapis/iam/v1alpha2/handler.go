@@ -145,6 +145,18 @@ func (h *iamHandler) DescribeUser(request *restful.Request, response *restful.Re
 		user = appendGlobalRoleAnnotation(user, globalRole.Name)
 	}
 
+	//查询用户所属租户名称
+	if user.Spec.OpTenantId != "" {
+		opTenant, err := h.opTenantGroup.DescribeOpTenant(user.Spec.OpTenantId)
+		if err != nil {
+			api.HandleInternalError(response, request, err)
+			return
+		}
+		if opTenant != nil {
+			tenantName := opTenant.Spec.TenantName
+			user.Spec.OpTenantName = tenantName
+		}
+	}
 	response.WriteEntity(user)
 }
 
