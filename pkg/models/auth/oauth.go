@@ -183,7 +183,7 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 				globalRole := ""
 				if isMain == IsAdmin {
 					//绑定租户管理员
-					globalRole = "platform-admin"
+					globalRole = "tenant-admin"
 				} else {
 					//绑定普通用户
 					globalRole = "platform-regular"
