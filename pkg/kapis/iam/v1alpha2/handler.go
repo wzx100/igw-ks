@@ -60,6 +60,7 @@ type UserCenterResp struct {
 
 type UserCenterRespData struct {
 	MainId      string `json:"mainId"`
+	UserId      string `json:"userId"`
 	Sex         string `json:"sex"`
 	AccountName string `json:"accountName"`
 	UserName    string `json:"userName"`
@@ -94,6 +95,7 @@ const DeleteUserUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4-snapsho
 const ResetUserPassword = "http://induscore.ftzq.internal.virtueit.net:81/v4-snapshot/portalcustomer/v1.0.0/user-center/userinfo/resetpassword/"
 
 //const ResetUserPassword = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo/resetpassword"
+const QueryUserInfoUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4-snapshot/portalcustomer/v1.0.0/user-center/userinfo/details"
 
 type GroupMember struct {
 	UserName  string `json:"userName"`
@@ -732,6 +734,54 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 			opuid := userResp.Data
 			fmt.Println("==========获取到返回的op用户uid为:", opuid, "=========")
 			user.Spec.Opuid = opuid
+			//查询用户信息
+			opUserInfoReq, err := http.NewRequest("GET", QueryUserInfoUrl+"/"+user.Spec.Opuid, nil)
+			if err != nil {
+				api.HandleInternalError(resp, req, err)
+				return
+			}
+			opUserInfoReq.Header.Set("Content-Type", "application/json")
+			opUserInfoReq.Header.Set("customer_id", operatoruser.Spec.OpCustomerId)
+			opUserInfoReq.Header.Set("tenant_id", operatoruser.Spec.OpTenantId)
+
+			client := http.Client{}
+			opResp, err := client.Do(opUserInfoReq) //Do 方法发送请求，返回 HTTP 回复
+			if err != nil {
+				fmt.Println("=========调用op查询用户接口异常======", err.Error())
+				api.HandleInternalError(resp, req, err)
+				return
+			}
+			data, err := ioutil.ReadAll(opResp.Body)
+			if err != nil {
+				api.HandleInternalError(resp, req, err)
+				return
+			}
+			defer opResp.Body.Close()
+			var userCenterResp UserCenterResp
+			err = json.Unmarshal(data, &userCenterResp)
+			if userCenterResp.Success == false {
+				var errorMessage string
+				if userCenterResp.Message != "" {
+					errorMessage = userCenterResp.Message
+				} else {
+					jsonByte, _ := json.Marshal(userCenterResp.Data)
+					errorMessage = string(jsonByte)
+				}
+				fmt.Println("调用op查询用户信息接口失败:", errorMessage)
+
+				err = errors.NewInternalError(fmt.Errorf(errorMessage))
+				api.HandleInternalError(resp, req, err)
+				return
+			} else {
+				mainId := userCenterResp.Data.MainId
+				userId := userCenterResp.Data.UserId
+				if mainId != "" {
+					user.Spec.OpTenantId = mainId
+				}
+				if userId != "" {
+					user.Spec.OpCustomerId = userId
+				}
+			}
 		}
 	} else {
 		fmt.Println("==========查询用户op部分信息为空,新增的为超级管理员=========")
@@ -1038,16 +1088,14 @@ func (h *iamHandler) DeleteUser(request *restful.Request, response *restful.Resp
 			}
 			defer resp.Body.Close()
 			var userResp UserCenterResp
-			err = json.Unmarshal(data, &userResp)
-			if err != nil {
-				api.HandleInternalError(response, request, err)
-				return
-			}
+			_ = json.Unmarshal(data, &userResp)
 			if userResp.Success == false {
 				fmt.Println("调用op删除用户接口失败:", userResp.Message)
 				err = errors.NewInternalError(fmt.Errorf(userResp.Message))
 				api.HandleInternalError(response, request, err)
 				return
+			} else {
+				fmt.Println("========<<删除op侧面用户成功<<=======")
 			}
 
 		}
