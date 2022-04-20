@@ -1119,6 +1119,15 @@ func (h *iamHandler) CreateGlobalRole(request *restful.Request, response *restfu
 		return
 	}
 
+	opTenantId := globalRole.Spec.OpTenantId
+	if opTenantId == "" {
+		operator, _ := apirequest.UserFrom(request.Request.Context())
+		loginuser, _ := h.im.DescribeUser(operator.GetName())
+		if loginuser != nil && loginuser.Spec.OpTenantId != "" {
+			globalRole.Spec.OpTenantId = loginuser.Spec.OpTenantId
+		}
+
+	}
 	created, err := h.am.CreateOrUpdateGlobalRole(&globalRole)
 	if err != nil {
 		api.HandleError(response, request, err)
