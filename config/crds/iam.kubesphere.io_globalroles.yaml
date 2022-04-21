@@ -86,7 +86,7 @@ spec:
           spec:
             properties:
               IsDefault:
-                type: integer
+                type: string
               extendFrom:
                 description: 继承角色名
                 type: string
