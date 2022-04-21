@@ -16,9 +16,13 @@ const (
 	//userInfoURL = "http://gzlwy.uat.internal.virtueit.net/v3/gateway/auth/v1.0.0/oauth/userInfo"
 	//authURL     = "http://gzlwy.uat.internal.virtueit.net/v1/home/login"
 	//tokenURL    = "http://gzlwy.uat.internal.virtueit.net/v3/gateway/auth/v1.0.0/oauth/token"
-	userInfoURL = "https://onepower.ft.industry-cmcc.com/v3/gateway/auth/v1.0.0/oauth/userInfo"
-	authURL     = "https://onepower.ft.industry-cmcc.com/login"
-	tokenURL    = "https://onepower.ft.industry-cmcc.com/v3/gateway/auth/v1.0.0/oauth/token"
+	//userInfoURL = "https://onepower.ft.industry-cmcc.com/v3/gateway/auth/v1.0.0/oauth/userInfo"
+	//authURL     = "https://onepower.ft.industry-cmcc.com/login"
+	//tokenURL    = "https://onepower.ft.industry-cmcc.com/v3/gateway/auth/v1.0.0/oauth/token"
+
+	userInfoURL = "http://coreop.ftzq.internal.virtueit.net:81/v3/gateway/auth/v1.0.0/oauth/userInfo"
+	authURL     = "http://onepower.ftzq.internal.virtueit.net:81/v1/zqhome/login"
+	tokenURL    = "http://coreop.ftzq.internal.virtueit.net:81/v3/gateway/auth/v1.0.0/oauth/token"
 )
 
 var opTokenMap = make(map[string]string)
