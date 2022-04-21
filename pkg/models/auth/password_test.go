@@ -242,6 +242,7 @@ func newActiveUser(username string, password string) *iamv1alpha2.User {
 	u := newUser(username, "", "")
 	password, _ = encrypt(password)
 	u.Spec.EncryptedPassword = password
-	u.Status.State = iamv1alpha2.UserActive
+	s := iamv1alpha2.UserActive
+	u.Status.State = &s
 	return u
 }
