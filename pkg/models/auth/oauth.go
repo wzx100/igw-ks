@@ -126,6 +126,8 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 		user.Spec.OpCustomerId = authenticated.GetUserID()
 		user.Spec.OpDeptId = authenticated.GetDeptid()
 		user.Spec.OpTenantId = authenticated.GetTenantId()
+
+		fmt.Println("==========编辑用户信息前user为", user, "========")
 		user, err = o.ksClient.IamV1alpha2().Users().Update(context.Background(), user, metav1.UpdateOptions{})
 		fmt.Println("==========new opAccessToken为:", user.Spec.OpAccessToken, "========")
 		byte, err := json.Marshal(user)
