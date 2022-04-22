@@ -30,7 +30,6 @@ import (
 
 	"github.com/form3tech-oss/jwt-go"
 
-	"kubesphere.io/kubesphere/pkg/apiserver/authentication/identityprovider/onepower"
 	"kubesphere.io/kubesphere/pkg/apiserver/authentication/oauth"
 	"kubesphere.io/kubesphere/pkg/apiserver/authentication/token"
 
@@ -642,8 +641,14 @@ func (h *handler) logout(req *restful.Request, resp *restful.Response) {
 		}
 	}
 
+	operatoruser, _ := h.im.DescribeUser(authenticated.GetName())
+	if operatoruser == nil || operatoruser.Spec.OpAccessToken == "" {
+		fmt.Println("未获取到op登录用户的opAccessToken，退出失败")
+		api.HandleInternalError(resp, req, apierrors.NewInternalError(fmt.Errorf("未获取到op登录用户的opAccessToken，退出失败")))
+		return
+	}
 	//调用onepower的登出接口
-	opAcessToken := onepower.GetOpToken()
+	opAcessToken := operatoruser.Spec.OpAccessToken
 	fmt.Println("调用OP登出接口，opAccessToken:", opAcessToken)
 	opLogoutReq, err := http.NewRequest("GET", logoutUrl+"?token="+opAcessToken, nil)
 	tr := &http.Transport{
