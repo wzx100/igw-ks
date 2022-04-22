@@ -467,6 +467,11 @@ func (h *iamHandler) ListGlobalRoles(req *restful.Request, resp *restful.Respons
 	}
 	if operatoruser.Spec.OpTenantId != "" {
 		queryParam.Filters["optenantid"] = query.Value(operatoruser.Spec.OpTenantId)
+		queryParam.Filters["loginuser"] = query.Value(operatoruser.Name)
+
+		//手动模拟一个
+		//queryParam.Filters["managerUser"] = query.Value(operatoruser.Name)
+
 	}
 	result, err := h.am.ListGlobalRoles(queryParam)
 	if err != nil {

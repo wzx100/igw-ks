@@ -46,6 +46,10 @@ func (d *globalrolesGetter) Get(_, name string) (runtime.Object, error) {
 
 func (d *globalrolesGetter) List(_ string, query *query.Query) (*api.ListResult, error) {
 
+	loginuser := query.Filters["loginuser"]
+	if string(loginuser) != "" {
+		delete(query.Filters, "loginuser")
+	}
 	var roles []*iamv1alpha2.GlobalRole
 	var err error
 
@@ -60,8 +64,44 @@ func (d *globalrolesGetter) List(_ string, query *query.Query) (*api.ListResult,
 		return nil, err
 	}
 
+	globalRoleName := ""
+	value := query.Filters["managerUser"]
+	if stringValue := string(value); stringValue != "" {
+		delete(query.Filters, "managerUser")
+
+		//属于新建和编辑用户,需要根据登录用户角色来判断
+		loginUserName := string(loginuser)
+		//查询登录用户角色绑定
+		globalRoleBindings, _ := d.sharedInformers.Iam().V1alpha2().GlobalRoleBindings().Lister().List(query.Selector())
+		for _, globalRoleBinding := range globalRoleBindings {
+			if globalRoleBinding.Subjects[0].Name == loginUserName {
+				globalrole, _ := d.sharedInformers.Iam().V1alpha2().GlobalRoles().Lister().Get(globalRoleBinding.RoleRef.Name)
+				if globalrole.Spec.ExtendFrom != "" {
+					globalRoleName = globalrole.Spec.ExtendFrom
+				} else {
+					globalRoleName = globalrole.Name
+				}
+			}
+		}
+	}
 	var result []runtime.Object
 	for _, role := range roles {
+		if globalRoleName != "" {
+			if globalRoleName == "platform-admin" || globalRoleName == "tenant-admin" {
+				//不是企业空间管理员和普通用户的
+				if role.Spec.ExtendFrom != "platform-regular" && role.Name != "platform-regular" && role.Spec.ExtendFrom != "workspaces-manager" && role.Name != "workspaces-manager" {
+					continue
+				}
+			} else if globalRoleName == "workspaces-manager" {
+				//不是普通用户和继承自普通用户的
+				if role.Spec.ExtendFrom != "platform-regular" && role.Name != "platform-regular" {
+					continue
+				}
+			} else {
+				continue
+			}
+
+		}
 		result = append(result, role)
 	}
 
