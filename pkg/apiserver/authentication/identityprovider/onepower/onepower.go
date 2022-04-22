@@ -189,7 +189,10 @@ func (o *onepower) IdentityExchangeCallback(req *http.Request) (identityprovider
 	defer userResp.Body.Close()
 
 	var onepowerIdentity onepowerIdentity
+	fmt.Println("=====请求用户信息返回的data数据为:", data, "===========")
 	err = json.Unmarshal(data, &onepowerIdentity)
+	fmt.Println("=====解析后onepowerIdentity的数据为:", onepowerIdentity, "===========")
+
 	onepowerIdentity.Data.OpAccessToken = token.AccessToken
 	fmt.Println("=====customerId为:", onepowerIdentity.Data.OriginalUserId, "===========")
 	fmt.Println("=====tenantId为:", onepowerIdentity.Data.OriginalTenantId, "===========")
