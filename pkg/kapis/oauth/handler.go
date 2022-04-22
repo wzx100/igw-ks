@@ -58,7 +58,8 @@ const (
 	grantTypePassword     = "password"
 	grantTypeRefreshToken = "refresh_token"
 	grantTypeCode         = "code"
-	logoutUrl             = "https://onepower.ft.industry-cmcc.com/v3/gateway/auth/v1.0.0/oauth/logout"
+	//logoutUrl             = "https://onepower.ft.industry-cmcc.com/v3/gateway/auth/v1.0.0/oauth/logout"
+	logoutUrl = "http://coreop.ftzq.internal.virtueit.net:81/v3/gateway/auth/v1.0.0/oauth/logout"
 )
 
 type Spec struct {
