@@ -642,25 +642,24 @@ func (h *handler) logout(req *restful.Request, resp *restful.Response) {
 	}
 
 	operatoruser, _ := h.im.DescribeUser(authenticated.GetName())
-	if operatoruser == nil || operatoruser.Spec.OpAccessToken == "" {
-		fmt.Println("未获取到op登录用户的opAccessToken，退出失败")
-		api.HandleInternalError(resp, req, apierrors.NewInternalError(fmt.Errorf("未获取到op登录用户的opAccessToken，退出失败")))
-		return
-	}
-	//调用onepower的登出接口
-	opAcessToken := operatoruser.Spec.OpAccessToken
-	fmt.Println("调用OP登出接口，opAccessToken:", opAcessToken)
-	opLogoutReq, err := http.NewRequest("GET", logoutUrl+"?token="+opAcessToken, nil)
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := &http.Client{
-		Transport: tr,
-	}
-	_, err = client.Do(opLogoutReq)
+	if operatoruser != nil && operatoruser.Spec.OpAccessToken != "" {
+		//调用onepower的登出接口
+		opAcessToken := operatoruser.Spec.OpAccessToken
+		fmt.Println("调用OP登出接口，opAccessToken:", opAcessToken)
+		opLogoutReq, err := http.NewRequest("GET", logoutUrl+"?token="+opAcessToken, nil)
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		client := &http.Client{
+			Transport: tr,
+		}
+		_, err = client.Do(opLogoutReq)
 
-	if err != nil {
-		fmt.Println("调用OP的登出接口出错, error: %v", err)
+		if err != nil {
+			fmt.Println("调用OP的登出接口出错, error: %v", err)
+			api.HandleInternalError(resp, req, apierrors.NewInternalError(err))
+			return
+		}
 	}
 
 	postLogoutRedirectURI := req.QueryParameter("post_logout_redirect_uri")
