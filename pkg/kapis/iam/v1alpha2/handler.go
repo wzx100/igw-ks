@@ -1766,6 +1766,45 @@ func (h *iamHandler) updateGlobalRoleBinding(operator authuser.Info, user *iamv1
 		klog.Error(err)
 		return err
 	}
+	//如果涉及到权限变更还需要调整对应的权限
+	newGlobalRole, _ := h.am.GetGlobalRole(globalRole)
+	newGlobalRoleSuperAuther := ""
+	if newGlobalRole.Spec.ExtendFrom != "" {
+		newGlobalRoleSuperAuther = newGlobalRole.Spec.ExtendFrom
+	} else {
+		newGlobalRoleSuperAuther = newGlobalRole.Name
+	}
+	globalRoleAuther := ""
+	if oldGlobalRole.Spec.ExtendFrom != "" {
+		globalRoleAuther = oldGlobalRole.Spec.ExtendFrom
+	} else {
+		globalRoleAuther = oldGlobalRole.Name
+	}
+	if newGlobalRoleSuperAuther != globalRoleAuther {
+		//需要做权限的变更
+		workspaceRoleBindings, _ := h.am.ListWorkspaceRoleBindings(user.Name, nil, "")
+		if len(workspaceRoleBindings) > 0 {
+			workspaceRoleBinding := workspaceRoleBindings[0]
+			workspaceRoleBindingName := workspaceRoleBinding.Name
+			username := strings.Split(workspaceRoleBindingName, "-")[0]
+			workspacename := strings.Split(workspaceRoleBindingName, "-")[1]
+			operator := strings.Split(workspaceRoleBindingName, "-")[2]
+			//删除现有的绑定关系
+			err = h.am.RemoveUserFromWorkspace(username, workspacename)
+			if err != nil {
+				return err
+			}
+			if operator == "admin" {
+				operator = "viewer"
+			} else {
+				operator = "admin"
+			}
+			err = h.am.CreateUserWorkspaceRoleBinding(username, workspacename, workspacename+"-"+operator)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
