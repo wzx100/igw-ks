@@ -830,6 +830,29 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 			return
 		}
 	}
+	//如果是企业空间管理员还要自动绑定该用户到企业空间
+	//查询用户绑定角色
+	flag := false
+	userGlobalRole, _ := h.am.GetGlobalRoleOfUser(operatorname)
+	if userGlobalRole.Spec.ExtendFrom == "workspaces-manager" || userGlobalRole.Name == "workspaces-manager" {
+		flag = true
+	}
+	//需要绑定到对应的企业空间
+	if flag {
+		//查询当前用户绑定的企业空间
+		workspaceRoleBindings, _ := h.am.ListWorkspaceRoleBindings(operatoruser.GetName(), nil, "")
+		if len(workspaceRoleBindings) > 0 {
+			workspaceRoleBinding := workspaceRoleBindings[0]
+			workspaceName := strings.Split(workspaceRoleBinding.RoleRef.Name, "-")[0]
+			err := h.am.CreateUserWorkspaceRoleBinding(user.Name, workspaceName, workspaceName+"-viewer")
+
+			if err != nil {
+				api.HandleError(resp, req, err)
+				return
+			}
+		}
+
+	}
 
 	// ensure encrypted password will not be output
 	created.Spec.EncryptedPassword = ""
