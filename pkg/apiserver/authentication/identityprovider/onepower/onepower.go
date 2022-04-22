@@ -3,9 +3,9 @@ package onepower
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/mitchellh/mapstructure"
 	"io/ioutil"
+	"k8s.io/klog"
 	"kubesphere.io/kubesphere/pkg/apiserver/authentication/identityprovider"
 	"kubesphere.io/kubesphere/pkg/apiserver/authentication/identityprovider/oauth2"
 	"kubesphere.io/kubesphere/pkg/apiserver/authentication/oauth"
@@ -171,12 +171,12 @@ func (o *onepower) IdentityExchangeCallback(req *http.Request) (identityprovider
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("===========>登录跳转成功开始<=========")
+	klog.V(0).Infof("===========>登录跳转成功开始<=========")
 
 	//存储token值
 	opTokenMap["accessOpToken"] = token.AccessToken
 
-	fmt.Println("OP单点登录跳转成功，token：" + token.AccessToken)
+	klog.V(0).Infof("OP单点登录跳转成功，token： %s", token.AccessToken)
 	userResp, err := oauth2.NewClient(ctx, oauth2.StaticTokenSource(token)).Get(o.Endpoint.UserInfoURL + "?token=" + token.AccessToken)
 	if err != nil {
 		return nil, err
@@ -189,14 +189,14 @@ func (o *onepower) IdentityExchangeCallback(req *http.Request) (identityprovider
 	defer userResp.Body.Close()
 
 	var onepowerIdentity onepowerIdentity
-	fmt.Println("=====请求用户信息返回的data数据为:", string(data), "===========")
+	klog.V(0).Infof("=====请求用户信息返回的data数据为:", string(data), "===========")
 	err = json.Unmarshal(data, &onepowerIdentity)
 	onepowerIdentity.Data.OpAccessToken = token.AccessToken
-	fmt.Println("=====解析后onepowerIdentity的数据为:", onepowerIdentity, "===========")
+	klog.V(0).Infof("=====解析后onepowerIdentity的数据为:", onepowerIdentity, "===========")
 
-	fmt.Println("=====customerId为:", onepowerIdentity.Data.OriginalUserId, "===========")
-	fmt.Println("=====tenantId为:", onepowerIdentity.Data.OriginalTenantId, "===========")
-	fmt.Println("=====deptId为:", onepowerIdentity.Data.OriginalDeptId, "===========")
+	klog.V(0).Infof("=====customerId为:", onepowerIdentity.Data.OriginalUserId, "===========")
+	klog.V(0).Infof("=====tenantId为:", onepowerIdentity.Data.OriginalTenantId, "===========")
+	klog.V(0).Infof("=====deptId为:", onepowerIdentity.Data.OriginalDeptId, "===========")
 
 	opTokenMap["customerId"] = onepowerIdentity.Data.OriginalUserId
 	opTokenMap["tenantId"] = onepowerIdentity.Data.OriginalTenantId

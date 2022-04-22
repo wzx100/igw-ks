@@ -88,12 +88,12 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 		return nil, "", err
 	}
 
-	fmt.Println("========当前登录用户名AccountName为:", authenticated.GetUsername(), "==========")
+	klog.V(0).Infof("========当前登录用户名AccountName为:", authenticated.GetUsername(), "==========")
 	user, err := o.userGetter.findUser(authenticated.GetUsername())
 	if user != nil {
-		fmt.Println("========查询etcd的信息为:邮件:", user.Spec.Email, "姓名:", user.ObjectMeta.Name, "===========")
+		klog.V(0).Infof("========查询etcd的信息为:邮件:", user.Spec.Email, "姓名:", user.ObjectMeta.Name, "===========")
 	} else {
-		fmt.Println("========查询etcd用户信息为空===========")
+		klog.V(0).Infof("========查询etcd用户信息为空===========")
 	}
 	//user, err := o.userGetter.findMappedUser(providerOptions.Name, authenticated.GetUserID())
 	if user == nil && providerOptions.MappingMethod == oauth.MappingMethodLookup {
@@ -106,42 +106,42 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 		//if !providerOptions.DisableLoginConfirmation {
 		//	return preRegistrationUser(providerOptions.Name, authenticated), providerOptions.Name, nil
 		//}
-		fmt.Println("========当前用户AccountName:", authenticated.GetUsername(), "在系统不存在==========")
+		klog.V(0).Infof("========当前用户AccountName:", authenticated.GetUsername(), "在系统不存在==========")
 		user, err = o.ksClient.IamV1alpha2().Users().Create(context.Background(), mappedUser(providerOptions.Name, authenticated), metav1.CreateOptions{})
 		if err != nil {
 			return nil, providerOptions.Name, err
 		}
 		byte, err := json.Marshal(user)
-		fmt.Println("==========新增用户信息为", string(byte), "========")
+		klog.V(0).Infof("==========新增用户信息为", string(byte), "========")
 		if err != nil {
 			return nil, providerOptions.Name, err
 		}
-		fmt.Println("=============>>新增用户成功<<==========")
+		klog.V(0).Infof("=============>>新增用户成功<<==========")
 	} else {
 		//更新用户opAccessToken
-		fmt.Println("=============>>编辑用户开始<<==========")
-		fmt.Println("==========old opAccessToken为:", user.Spec.OpAccessToken, "========")
+		klog.V(0).Infof("=============>>编辑用户开始<<==========")
+		klog.V(0).Infof("==========old opAccessToken为:", user.Spec.OpAccessToken, "========")
 		user.Spec.OpAccessToken = authenticated.GetOpAccessToken()
 		user.Spec.Opuid = authenticated.GetOpuid()
 		user.Spec.OpCustomerId = authenticated.GetUserID()
 		user.Spec.OpDeptId = authenticated.GetDeptid()
 		user.Spec.OpTenantId = authenticated.GetTenantId()
 
-		fmt.Println("==========编辑用户信息前user为", user, "========")
+		klog.V(0).Infof("==========编辑用户信息前user为", user, "========")
 		user, err = o.ksClient.IamV1alpha2().Users().Update(context.Background(), user, metav1.UpdateOptions{})
-		fmt.Println("==========new opAccessToken为:", user.Spec.OpAccessToken, "========")
+		klog.V(0).Infof("==========new opAccessToken为:", user.Spec.OpAccessToken, "========")
 		byte, err := json.Marshal(user)
 		if err != nil {
 			return nil, providerOptions.Name, err
 		}
-		fmt.Println("==========编辑用户信息为", string(byte), "========")
+		klog.V(0).Infof("==========编辑用户信息为", string(byte), "========")
 		queryUser, err := o.ksClient.IamV1alpha2().Users().Get(context.Background(), user.Name, metav1.GetOptions{})
 		byte, err = json.Marshal(queryUser)
 		if err != nil {
 			return nil, providerOptions.Name, err
 		}
-		fmt.Println("==========编辑后查询用户信息为", string(byte), "========")
-		fmt.Println("=============>>编辑用户结束<<==========")
+		klog.V(0).Infof("==========编辑后查询用户信息为", string(byte), "========")
+		klog.V(0).Infof("=============>>编辑用户结束<<==========")
 
 	}
 	//绑定角色
