@@ -50,6 +50,7 @@ import (
 type Member struct {
 	Username string `json:"username"`
 	RoleRef  string `json:"roleRef"`
+	Operate  string `json:"operate"`
 }
 type UserCenterResp struct {
 	Code    string             `json:"code"`
@@ -1408,11 +1409,33 @@ func (h *iamHandler) CreateWorkspaceMembers(request *restful.Request, response *
 	}
 
 	for _, member := range members {
-		err := h.am.CreateUserWorkspaceRoleBinding(member.Username, workspace, member.RoleRef)
-		if err != nil {
-			api.HandleError(response, request, err)
-			return
+		if member.Operate == "bind" {
+			roleRef := ""
+			globalRole, _ := h.am.GetGlobalRoleOfUser(member.Username)
+			if globalRole.Spec.ExtendFrom != "" {
+				roleRef = globalRole.Spec.ExtendFrom
+			} else {
+				roleRef = globalRole.Name
+			}
+			role := ""
+			if roleRef == "platform-regular" {
+				role = workspace + "-viewer"
+			} else {
+				role = workspace + "-admin"
+			}
+			err := h.am.CreateUserWorkspaceRoleBinding(member.Username, workspace, role)
+			if err != nil {
+				api.HandleError(response, request, err)
+				return
+			}
+		} else {
+			err := h.am.RemoveUserFromWorkspace(member.Username, workspace)
+			if err != nil {
+				api.HandleError(response, request, err)
+				return
+			}
 		}
+
 	}
 
 	response.WriteEntity(members)
