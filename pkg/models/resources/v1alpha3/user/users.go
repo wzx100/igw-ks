@@ -50,6 +50,14 @@ func (d *usersGetter) Get(_, name string) (runtime.Object, error) {
 
 func (d *usersGetter) List(_ string, query *query.Query) (*api.ListResult, error) {
 
+	editmembers := query.Filters["editmembers"]
+	if editmembers != "" {
+		delete(query.Filters, "editmembers")
+	}
+	workspacename := query.Filters["workspacename"]
+	if editmembers != "" {
+		delete(query.Filters, "workspacename")
+	}
 	loginusername := query.Filters["loginusername"]
 	delete(query.Filters, "loginusername")
 	var users []*iamv1alpha2.User
@@ -83,6 +91,7 @@ func (d *usersGetter) List(_ string, query *query.Query) (*api.ListResult, error
 	if err != nil {
 		return nil, err
 	}
+	//企业空间管理员查询当前企业空间的成员
 	if loginusername != "" {
 		globalRoleBindings, _ := d.ksInformer.Iam().V1alpha2().GlobalRoleBindings().Lister().List(query.Selector())
 		for _, globalRoleBinding := range globalRoleBindings {
@@ -103,6 +112,22 @@ func (d *usersGetter) List(_ string, query *query.Query) (*api.ListResult, error
 	}
 	var result []runtime.Object
 	for _, user := range users {
+		//编辑成员企业空间查看,查询未绑定企业空间的
+		if workspacename != "" && editmembers != "" {
+			workSpaceRoleBinds, _ := d.ksInformer.Iam().V1alpha2().WorkspaceRoleBindings().Lister().List(query.Selector())
+			//循环遍历
+			flag1 := false
+			for _, workSpaceRoleBind := range workSpaceRoleBinds {
+				if strings.Contains(workSpaceRoleBind.Subjects[0].Name, user.Name) && !strings.Contains(workSpaceRoleBind.RoleRef.Name, string(workspacename)) {
+					//已绑定但不是该企业空间的成员,则跳过
+					flag1 = true
+					break
+				}
+			}
+			if flag1 {
+				continue
+			}
+		}
 		tenantname := string(query.Filters["tenantname"])
 		if tenantname != "" {
 			//查询租户信息
