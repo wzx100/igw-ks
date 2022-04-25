@@ -34,9 +34,6 @@ ADD . /workspace/
 RUN make ks-apiserver
 RUN mv /workspace/bin/cmd/ks-apiserver ${OUTDIR}/usr/local/bin/
 
-RUN make manifests
-
-RUN make deploy
 
 ##############
 # Final image
