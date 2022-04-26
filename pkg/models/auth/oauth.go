@@ -184,6 +184,7 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 				return nil, providerOptions.Name, err
 			} else {
 				isMain := userCenterResp.Data.IsAdmin
+				fmt.Println("调用op查询用户信息接口返回isMain:", isMain)
 				globalRole := ""
 				if isMain == IsAdmin {
 					//绑定租户管理员
