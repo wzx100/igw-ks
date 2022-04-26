@@ -222,6 +222,7 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 		}
 		data, err := ioutil.ReadAll(opResp.Body)
 		if err != nil {
+			fmt.Println("=========解析op查询租户信息异常======", err.Error())
 			return nil, providerOptions.Name, err
 		}
 		defer opResp.Body.Close()
@@ -260,6 +261,7 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 				}
 				_, err = o.opTenantGroup.CreateOpTenant(opTenantInfo)
 				if err != nil {
+					fmt.Println("=========创建租户信息异常======", err.Error())
 					return nil, providerOptions.Name, err
 				}
 			} else {
@@ -275,6 +277,7 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 				}
 				_, err = o.opTenantGroup.UpdateOpTenant(opTenantInfo)
 				if err != nil {
+					fmt.Println("=========更新租户信息异常======", err.Error())
 					return nil, providerOptions.Name, err
 				}
 			}
