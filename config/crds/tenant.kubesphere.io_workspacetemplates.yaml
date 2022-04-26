@@ -137,7 +137,6 @@ spec:
                     type: object
                 type: object
             required:
-            - optenantid
             - placement
             - template
             type: object
