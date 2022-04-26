@@ -1,0 +1,144 @@
+  apiVersion: iam.kubesphere.io/v1alpha2
+  kind: GlobalRole
+  metadata:
+    annotations:
+      iam.kubesphere.io/dependencies: '["role-template-view-workspaces"]'
+      iam.kubesphere.io/module: Access Control
+      iam.kubesphere.io/role-template-rules: '{"workspaces": "update-manage"}'
+      kubesphere.io/alias-name: Workspaces-new-Management
+    creationTimestamp: "2022-04-08T10:05:30Z"
+    generation: 1
+    labels:
+      iam.kubesphere.io/role-template: "true"
+    name: role-template-manage-workspaces-newdefine
+    resourceVersion: "716311"
+
+  spec: 
+    IsDefault: "0"
+  rules:
+  - apiGroups:
+    - '*'
+    resources:
+    - abnormalworkloads
+    - quotas
+    - workloads
+    - volumesnapshots
+    - dashboards
+    - configmaps
+    - endpoints
+    - events
+    - limitranges
+    - namespaces
+    - persistentvolumeclaims
+    - podtemplates
+    - replicationcontrollers
+    - resourcequotas
+    - secrets
+    - serviceaccounts
+    - services
+    - applications
+    - controllerrevisions
+    - deployments
+    - replicasets
+    - statefulsets
+    - daemonsets
+    - meshpolicies
+    - cronjobs
+    - jobs
+    - devopsprojects
+    - devops
+    - pipelines
+    - pipelines/runs
+    - pipelines/pipelineruns
+    - pipelines/branches
+    - pipelines/checkScriptCompile
+    - pipelines/consolelog
+    - pipelines/scan
+    - pipelines/sonarstatus
+    - pipelineruns
+    - pipelineruns/nodedetails
+    - checkCron
+    - credentials
+    - credentials/usage
+    - s2ibinaries
+    - s2ibinaries/file
+    - s2ibuilders
+    - s2ibuildertemplates
+    - s2iruns
+    - horizontalpodautoscalers
+    - events
+    - ingresses
+    - router
+    - filters
+    - pods
+    - pods/log
+    - pods/exec
+    - pods/containers
+    - namespacenetworkpolicies
+    - workspacenetworkpolicies
+    - networkpolicies
+    - podsecuritypolicies
+    - rolebindings
+    - roles
+    - members
+    - servicepolicies
+    - federatedapplications
+    - federatedconfigmaps
+    - federateddeployments
+    - federatedingresses
+    - federatedjobs
+    - federatedlimitranges
+    - federatednamespaces
+    - federatedpersistentvolumeclaims
+    - federatedreplicasets
+    - federatedsecrets
+    - federatedserviceaccounts
+    - federatedservices
+    - federatedservicestatuses
+    - federatedstatefulsets
+
+
+    - repos
+    - repos/action
+    - repos/events
+    - apps
+    - apps/versions
+    - categories
+    - apps/audits
+    - workloads
+    verbs:
+    - '*'
+  - apiGroups:
+    - '*'
+    resources:
+    - federatedworkspaces
+    - workspaces
+    - workspaceroles
+    - workspacemembers
+    - workspacemembers/namespaces
+    - workspacemembers/devops
+    - workspacerolebindings
+    verbs:
+    - list
+    - get
+    - watch
+    - edit
+
+  - apiGroups:
+    - '*'
+    resources:
+    - clusters
+    verbs:
+    - list
+  - apiGroups:
+    - monitoring.kubesphere.io
+    - monitoring.coreos.com
+    - metering.kubesphere.io
+    - servicemesh.kubesphere.io
+    - alerting.kubesphere.io
+    - network.kubesphere.io
+    - resources.kubesphere.io
+    resources:
+    - '*'
+    verbs:
+    - '*'

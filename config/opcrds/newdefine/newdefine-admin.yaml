@@ -1,0 +1,24 @@
+apiVersion: iam.kubesphere.io/v1alpha2
+kind: GlobalRole
+metadata:
+  annotations:
+    iam.kubesphere.io/aggregation-roles: '["role-template-manage-clusters","role-template-view-clusters","role-template-view-roles","role-template-manage-roles","role-template-view-roles","role-template-view-workspaces","role-template-manage-workspaces","role-template-manage-users","role-template-view-roles","role-template-view-users","role-template-manage-app-templates","role-template-view-app-templates","role-template-manage-platform-settings"]'
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"iam.kubesphere.io/v1alpha2","kind":"GlobalRole","metadata":{"annotations":{"iam.kubesphere.io/aggregation-roles":"[\"role-template-manage-clusters\",\"role-template-view-clusters\",\"role-template-view-roles\",\"role-template-manage-roles\",\"role-template-view-roles\",\"role-template-view-workspaces\",\"role-template-manage-workspaces\",\"role-template-manage-users\",\"role-template-view-roles\",\"role-template-view-users\",\"role-template-manage-app-templates\",\"role-template-view-app-templates\",\"role-template-manage-platform-settings\"]","kubesphere.io/creator":"admin"},"name":"platform-admin"},"rules":[{"apiGroups":["*"],"resources":["*"],"verbs":["*"]},{"nonResourceURLs":["*"],"verbs":["*"]}]}
+    kubesphere.io/creator: admin
+  creationTimestamp: "2022-04-08T10:05:30Z"
+  generation: 1
+  name: platform-admin
+spec: 
+  IsDefault: "1" 
+rules:
+- apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- nonResourceURLs:
+  - '*'
+  verbs:
+  - '*'
