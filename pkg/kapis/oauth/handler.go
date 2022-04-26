@@ -642,6 +642,7 @@ func (h *handler) logout(req *restful.Request, resp *restful.Response) {
 	}
 
 	operatoruser, _ := h.im.DescribeUser(authenticated.GetName())
+	fmt.Println("用户登出，当前用户名为:", authenticated.GetName(), ",用户的opAccessToken:", operatoruser.Spec.OpAccessToken)
 	if operatoruser != nil && operatoruser.Spec.OpAccessToken != "" {
 		//调用onepower的登出接口
 		opAcessToken := operatoruser.Spec.OpAccessToken
