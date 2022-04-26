@@ -217,7 +217,7 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 		client := http.Client{}
 		opResp, err := client.Do(opMainInfoReq) //Do 方法发送请求，返回 HTTP 回复
 		if err != nil {
-			fmt.Println("=========调用op新增用户接口异常======", err.Error())
+			fmt.Println("=========调用op查询租户接口异常======", err.Error())
 			return nil, providerOptions.Name, err
 		}
 		data, err := ioutil.ReadAll(opResp.Body)
@@ -247,6 +247,7 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 			//租户名称
 			mainName := userCenterResp.Data.MainName
 			mainId := userCenterResp.Data.MainId
+			fmt.Println("调用op查询租户信息接口数据为userName:", userName, ",mainName:", mainName, ",mainId:", mainId)
 			opTenantInfo, err := o.opTenantGroup.DescribeOpTenant(mainId)
 			if opTenantInfo == nil {
 				//新增
