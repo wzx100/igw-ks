@@ -634,12 +634,6 @@ func (h *handler) codeGrant(req *restful.Request, response *restful.Response) {
 
 func (h *handler) logout(req *restful.Request, resp *restful.Response) {
 	authenticated, ok := request.UserFrom(req.Request.Context())
-	if ok {
-		if err := h.tokenOperator.RevokeAllUserTokens(authenticated.GetName()); err != nil {
-			api.HandleInternalError(resp, req, apierrors.NewInternalError(err))
-			return
-		}
-	}
 
 	operatoruser, _ := h.im.DescribeUser(authenticated.GetName())
 	fmt.Println("用户登出，当前用户名为:", authenticated.GetName(), ",用户的opAccessToken:", operatoruser.Spec.OpAccessToken)
@@ -658,6 +652,12 @@ func (h *handler) logout(req *restful.Request, resp *restful.Response) {
 
 		if err != nil {
 			fmt.Println("调用OP的登出接口出错, error: %v", err)
+			api.HandleInternalError(resp, req, apierrors.NewInternalError(err))
+			return
+		}
+	}
+	if ok {
+		if err := h.tokenOperator.RevokeAllUserTokens(authenticated.GetName()); err != nil {
 			api.HandleInternalError(resp, req, apierrors.NewInternalError(err))
 			return
 		}
