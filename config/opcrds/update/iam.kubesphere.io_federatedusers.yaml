@@ -155,3 +155,724 @@ status:
     plural: ""
   conditions: []
   storedVersions: []
+
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  name: globalroles.iam.kubesphere.io
+spec:
+  group: iam.kubesphere.io
+  names:
+    categories:
+      - iam
+    kind: GlobalRole
+    listKind: GlobalRoleList
+    plural: globalroles
+    singular: globalrole
+  scope: Cluster
+  versions:
+    - name: v1alpha2
+      schema:
+        openAPIV3Schema:
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            rules:
+              description: Rules holds all the PolicyRules for this GlobalRole
+              items:
+                description: PolicyRule holds information that describes a policy rule,
+                  but does not contain information about who the rule applies to or
+                  which namespace the rule applies to.
+                properties:
+                  apiGroups:
+                    description: APIGroups is the name of the APIGroup that contains
+                      the resources.  If multiple API groups are specified, any action
+                      requested against one of the enumerated resources in any API group
+                      will be allowed.
+                    items:
+                      type: string
+                    type: array
+                  nonResourceURLs:
+                    description: NonResourceURLs is a set of partial urls that a user
+                      should have access to.  *s are allowed, but only as the full,
+                      final step in the path Since non-resource URLs are not namespaced,
+                      this field is only applicable for ClusterRoles referenced from
+                      a ClusterRoleBinding. Rules can either apply to API resources
+                      (such as "pods" or "secrets") or non-resource URL paths (such
+                      as "/api"),  but not both.
+                    items:
+                      type: string
+                    type: array
+                  resourceNames:
+                    description: ResourceNames is an optional white list of names that
+                      the rule applies to.  An empty set means that everything is allowed.
+                    items:
+                      type: string
+                    type: array
+                  resources:
+                    description: Resources is a list of resources this rule applies
+                      to.  ResourceAll represents all resources.
+                    items:
+                      type: string
+                    type: array
+                  verbs:
+                    description: Verbs is a list of Verbs that apply to ALL the ResourceKinds
+                      and AttributeRestrictions contained in this rule.  VerbAll represents
+                      all kinds.
+                    items:
+                      type: string
+                    type: array
+                required:
+                  - verbs
+                type: object
+              type: array
+            spec:
+              properties:
+                IsDefault:
+                  type: string
+                extendFrom:
+                  description: 继承角色名
+                  type: string
+                optenantid:
+                  description: Unique email address(https://www.ietf.org/rfc/rfc5322.txt).
+                  type: string
+              type: object
+          type: object
+      served: true
+      storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  name: users.iam.kubesphere.io
+spec:
+  group: iam.kubesphere.io
+  names:
+    categories:
+      - iam
+    kind: User
+    listKind: UserList
+    plural: users
+    singular: user
+  scope: Cluster
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .spec.email
+          name: Email
+          type: string
+        - jsonPath: .status.state
+          name: Status
+          type: string
+      name: v1alpha2
+      schema:
+        openAPIV3Schema:
+          description: User is the Schema for the users API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: UserSpec defines the desired state of User
+              properties:
+                belongworkspace:
+                  type: string
+                cellphone:
+                  type: string
+                description:
+                  description: Description of the user.
+                  type: string
+                displayName:
+                  type: string
+                email:
+                  description: Unique email address(https://www.ietf.org/rfc/rfc5322.txt).
+                  type: string
+                groups:
+                  items:
+                    type: string
+                  type: array
+                lang:
+                  description: The preferred written or spoken language for the user.
+                  type: string
+                opTenantName:
+                  type: string
+                opaccesstoken:
+                  type: string
+                opcustomerid:
+                  type: string
+                opdeptid:
+                  type: string
+                optenantid:
+                  type: string
+                opuid:
+                  type: string
+                password:
+                  description: 'password will be encrypted by mutating admission webhook
+                  Password pattern is tricky here. The rule is simple: length between
+                  [6,64], at least one uppercase letter, one lowercase letter, one
+                  digit. The regexp in console(javascript) is quite straightforward:
+                  ^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[^]{6,64}$ But in Go, we don''t have
+                  ?= (back tracking) capability in regexp (also in CRD validation
+                  pattern) So we adopted an alternative scheme to achieve. Use 6 different
+                  regexp to combine to achieve the same effect. These six schemes
+                  enumerate the arrangement of numbers, uppercase letters, and lowercase
+                  letters that appear for the first time. - ^(.*[a-z].*[A-Z].*[0-9].*)$
+                  stands for lowercase letter comes first, then followed by an uppercase
+                  letter, then a digit. - ^(.*[a-z].*[0-9].*[A-Z].*)$ stands for lowercase
+                  letter comes first, then followed by a digit, then an uppercase
+                  leeter. - ^(.*[A-Z].*[a-z].*[0-9].*)$ ... - ^(.*[A-Z].*[0-9].*[a-z].*)$
+                  ... - ^(.*[0-9].*[a-z].*[A-Z].*)$ ... - ^(.*[0-9].*[A-Z].*[a-z].*)$
+                  ... Last but not least, the bcrypt string is also included to match
+                  the encrypted password. ^(\$2[ayb]\$.{56})$'
+                  maxLength: 64
+                  minLength: 6
+                  pattern: ^(.*[a-z].*[A-Z].*[0-9].*)$|^(.*[a-z].*[0-9].*[A-Z].*)$|^(.*[A-Z].*[a-z].*[0-9].*)$|^(.*[A-Z].*[0-9].*[a-z].*)$|^(.*[0-9].*[a-z].*[A-Z].*)$|^(.*[0-9].*[A-Z].*[a-z].*)$|^(\$2[ayb]\$.{56})$
+                  type: string
+                sex:
+                  type: integer
+              required:
+                - email
+              type: object
+            status:
+              description: UserStatus defines the observed state of User
+              properties:
+                lastLoginTime:
+                  description: Last login attempt timestamp
+                  format: date-time
+                  type: string
+                lastTransitionTime:
+                  format: date-time
+                  type: string
+                reason:
+                  type: string
+                state:
+                  description: The user status
+                  type: string
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+      subresources: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: (devel)
+  creationTimestamp: null
+  name: workspacetemplates.tenant.kubesphere.io
+spec:
+  group: tenant.kubesphere.io
+  names:
+    categories:
+      - tenant
+    kind: WorkspaceTemplate
+    listKind: WorkspaceTemplateList
+    plural: workspacetemplates
+    singular: workspacetemplate
+  scope: Cluster
+  versions:
+    - name: v1alpha2
+      schema:
+        openAPIV3Schema:
+          description: WorkspaceTemplate is the Schema for the workspacetemplates API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              properties:
+                optenantid:
+                  type: string
+                optenantname:
+                  type: string
+                overrides:
+                  items:
+                    properties:
+                      clusterName:
+                        type: string
+                      clusterOverrides:
+                        items:
+                          properties:
+                            op:
+                              type: string
+                            path:
+                              type: string
+                            value:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                          required:
+                            - path
+                          type: object
+                        type: array
+                    required:
+                      - clusterName
+                    type: object
+                  type: array
+                placement:
+                  properties:
+                    clusterSelector:
+                      description: A label selector is a label query over a set of resources.
+                        The result of matchLabels and matchExpressions are ANDed. An
+                        empty label selector matches all objects. A null label selector
+                        matches no objects.
+                      properties:
+                        matchExpressions:
+                          description: matchExpressions is a list of label selector
+                            requirements. The requirements are ANDed.
+                          items:
+                            description: A label selector requirement is a selector
+                              that contains values, a key, and an operator that relates
+                              the key and values.
+                            properties:
+                              key:
+                                description: key is the label key that the selector
+                                  applies to.
+                                type: string
+                              operator:
+                                description: operator represents a key's relationship
+                                  to a set of values. Valid operators are In, NotIn,
+                                  Exists and DoesNotExist.
+                                type: string
+                              values:
+                                description: values is an array of string values. If
+                                  the operator is In or NotIn, the values array must
+                                  be non-empty. If the operator is Exists or DoesNotExist,
+                                  the values array must be empty. This array is replaced
+                                  during a strategic merge patch.
+                                items:
+                                  type: string
+                                type: array
+                            required:
+                              - key
+                              - operator
+                            type: object
+                          type: array
+                        matchLabels:
+                          additionalProperties:
+                            type: string
+                          description: matchLabels is a map of {key,value} pairs. A
+                            single {key,value} in the matchLabels map is equivalent
+                            to an element of matchExpressions, whose key field is "key",
+                            the operator is "In", and the values array contains only
+                            "value". The requirements are ANDed.
+                          type: object
+                      type: object
+                    clusters:
+                      items:
+                        properties:
+                          name:
+                            type: string
+                        required:
+                          - name
+                        type: object
+                      type: array
+                  type: object
+                template:
+                  properties:
+                    metadata:
+                      type: object
+                    spec:
+                      description: WorkspaceSpec defines the desired state of Workspace
+                      properties:
+                        manager:
+                          type: string
+                        networkIsolation:
+                          type: boolean
+                      type: object
+                  type: object
+              required:
+                - placement
+                - template
+              type: object
+          type: object
+      served: true
+      storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: iam.kubesphere.io/v1alpha2
+kind: GlobalRole
+metadata:
+  annotations:
+    iam.kubesphere.io/aggregation-roles: '["role-template-manage-clusters","role-template-view-clusters","role-template-view-roles","role-template-manage-roles","role-template-view-roles","role-template-view-workspaces","role-template-manage-workspaces","role-template-manage-users","role-template-view-roles","role-template-view-users","role-template-manage-app-templates","role-template-view-app-templates","role-template-manage-platform-settings"]'
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"iam.kubesphere.io/v1alpha2","kind":"GlobalRole","metadata":{"annotations":{"iam.kubesphere.io/aggregation-roles":"[\"role-template-manage-clusters\",\"role-template-view-clusters\",\"role-template-view-roles\",\"role-template-manage-roles\",\"role-template-view-roles\",\"role-template-view-workspaces\",\"role-template-manage-workspaces\",\"role-template-manage-users\",\"role-template-view-roles\",\"role-template-view-users\",\"role-template-manage-app-templates\",\"role-template-view-app-templates\",\"role-template-manage-platform-settings\"]","kubesphere.io/creator":"admin"},"name":"platform-admin"},"rules":[{"apiGroups":["*"],"resources":["*"],"verbs":["*"]},{"nonResourceURLs":["*"],"verbs":["*"]}]}
+    kubesphere.io/creator: admin
+  creationTimestamp: "2022-04-08T10:05:30Z"
+  generation: 1
+  name: platform-admin
+spec:
+  IsDefault: "1"
+rules:
+  - apiGroups:
+      - '*'
+    resources:
+      - '*'
+    verbs:
+      - '*'
+  - nonResourceURLs:
+      - '*'
+    verbs:
+      - '*'
+---
+apiVersion: iam.kubesphere.io/v1alpha2
+kind: GlobalRole
+metadata:
+  annotations:
+    iam.kubesphere.io/aggregation-roles: '["role-template-view-app-templates"]'
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"iam.kubesphere.io/v1alpha2","kind":"GlobalRole","metadata":{"annotations":{"iam.kubesphere.io/aggregation-roles":"[\"role-template-view-app-templates\"]","kubesphere.io/creator":"admin"},"name":"platform-regular"},"rules":[]}
+    kubesphere.io/creator: admin
+  generation: 1
+  labels:
+    kubefed.io/managed: "false"
+  name: platform-regular
+spec:
+  IsDefault: "1"
+rules: []
+
+---
+apiVersion: iam.kubesphere.io/v1alpha2
+kind: GlobalRole
+metadata:
+  annotations:
+    iam.kubesphere.io/dependencies: '["role-template-view-workspaces"]'
+    iam.kubesphere.io/module: Access Control
+    iam.kubesphere.io/role-template-rules: '{"workspaces": "update-manage"}'
+    kubesphere.io/alias-name: Workspaces-new-Management
+  creationTimestamp: "2022-04-08T10:05:30Z"
+  generation: 1
+  labels:
+    iam.kubesphere.io/role-template: "true"
+  name: role-template-manage-workspaces-newdefine
+  resourceVersion: "716311"
+spec:
+  IsDefault: "0"
+rules:
+  - apiGroups:
+      - '*'
+    resources:
+      - abnormalworkloads
+      - quotas
+      - workloads
+      - volumesnapshots
+      - dashboards
+      - configmaps
+      - endpoints
+      - events
+      - limitranges
+      - namespaces
+      - persistentvolumeclaims
+      - podtemplates
+      - replicationcontrollers
+      - resourcequotas
+      - secrets
+      - serviceaccounts
+      - services
+      - applications
+      - controllerrevisions
+      - deployments
+      - replicasets
+      - statefulsets
+      - daemonsets
+      - meshpolicies
+      - cronjobs
+      - jobs
+      - devopsprojects
+      - devops
+      - pipelines
+      - pipelines/runs
+      - pipelines/pipelineruns
+      - pipelines/branches
+      - pipelines/checkScriptCompile
+      - pipelines/consolelog
+      - pipelines/scan
+      - pipelines/sonarstatus
+      - pipelineruns
+      - pipelineruns/nodedetails
+      - checkCron
+      - credentials
+      - credentials/usage
+      - s2ibinaries
+      - s2ibinaries/file
+      - s2ibuilders
+      - s2ibuildertemplates
+      - s2iruns
+      - horizontalpodautoscalers
+      - events
+      - ingresses
+      - router
+      - filters
+      - pods
+      - pods/log
+      - pods/exec
+      - pods/containers
+      - namespacenetworkpolicies
+      - workspacenetworkpolicies
+      - networkpolicies
+      - podsecuritypolicies
+      - rolebindings
+      - roles
+      - members
+      - servicepolicies
+      - federatedapplications
+      - federatedconfigmaps
+      - federateddeployments
+      - federatedingresses
+      - federatedjobs
+      - federatedlimitranges
+      - federatednamespaces
+      - federatedpersistentvolumeclaims
+      - federatedreplicasets
+      - federatedsecrets
+      - federatedserviceaccounts
+      - federatedservices
+      - federatedservicestatuses
+      - federatedstatefulsets
+      - repos
+      - repos/action
+      - repos/events
+      - apps
+      - apps/versions
+      - categories
+      - apps/audits
+      - workloads
+    verbs:
+      - '*'
+  - apiGroups:
+      - '*'
+    resources:
+      - federatedworkspaces
+      - workspaces
+      - workspaceroles
+      - workspacemembers
+      - workspacemembers/namespaces
+      - workspacemembers/devops
+      - workspacerolebindings
+    verbs:
+      - list
+      - get
+      - watch
+      - edit
+  - apiGroups:
+      - '*'
+    resources:
+      - clusters
+    verbs:
+      - list
+  - apiGroups:
+      - monitoring.kubesphere.io
+      - monitoring.coreos.com
+      - metering.kubesphere.io
+      - servicemesh.kubesphere.io
+      - alerting.kubesphere.io
+      - network.kubesphere.io
+      - resources.kubesphere.io
+    resources:
+      - '*'
+    verbs:
+      - '*'
+---
+apiVersion: iam.kubesphere.io/v1alpha2
+kind: GlobalRole
+metadata:
+  annotations:
+    iam.kubesphere.io/aggregation-roles: '["role-template-manage-app-templates","role-template-view-app-templates","role-template-manage-clusters","role-template-view-clusters","role-template-view-workspaces","role-template-manage-workspaces-newdefine","role-template-view-users","role-template-manage-users","role-template-view-roles","role-template-manage-roles"]'
+    kubesphere.io/creator: admin
+  name: workspaces-manager
+spec:
+  IsDefault: "1"
+rules:
+  - apiGroups:
+      - '*'
+    resources:
+      - abnormalworkloads
+      - quotas
+      - workloads
+      - volumesnapshots
+      - dashboards
+      - configmaps
+      - endpoints
+      - events
+      - limitranges
+      - namespaces
+      - persistentvolumeclaims
+      - podtemplates
+      - replicationcontrollers
+      - resourcequotas
+      - secrets
+      - serviceaccounts
+      - services
+      - applications
+      - controllerrevisions
+      - deployments
+      - replicasets
+      - statefulsets
+      - daemonsets
+      - meshpolicies
+      - cronjobs
+      - jobs
+      - devopsprojects
+      - devops
+      - pipelines
+      - pipelines/runs
+      - pipelines/pipelineruns
+      - pipelines/branches
+      - pipelines/checkScriptCompile
+      - pipelines/consolelog
+      - pipelines/scan
+      - pipelines/sonarstatus
+      - pipelineruns
+      - pipelineruns/nodedetails
+      - checkCron
+      - credentials
+      - credentials/usage
+      - s2ibinaries
+      - s2ibinaries/file
+      - s2ibuilders
+      - s2ibuildertemplates
+      - s2iruns
+      - events
+      - ingresses
+      - router
+      - filters
+      - pods
+      - pods/log
+      - pods/exec
+      - pods/containers
+      - namespacenetworkpolicies
+      - workspacenetworkpolicies
+      - networkpolicies
+      - podsecuritypolicies
+      - rolebindings
+      - roles
+      - members
+      - servicepolicies
+      - federatedapplications
+      - federatedconfigmaps
+      - federateddeployments
+      - federatedingresses
+      - federatedjobs
+      - federatedlimitranges
+      - federatednamespaces
+      - federatedpersistentvolumeclaims
+      - federatedreplicasets
+      - federatedsecrets
+      - federatedserviceaccounts
+      - federatedservices
+      - federatedservicestatuses
+      - federatedstatefulsets
+      - groups
+      - groupbindings
+    verbs:
+      - '*'
+  - apiGroups:
+      - '*'
+    resources:
+      - federatedworkspaces
+      - workspaces
+      - workspaceroles
+      - workspacemembers
+      - workspacemembers/namespaces
+      - workspacemembers/devops
+      - workspacerolebindings
+    verbs:
+      - list
+      - get
+      - watch
+  - apiGroups:
+      - '*'
+    resources:
+      - users
+      - users/password
+      - users/loginrecords
+      - globalroles
+    verbs:
+      - '*'
+  - apiGroups:
+      - openpitrix.io
+    resources:
+      - repos
+      - apps
+      - apps/versions
+      - categories
+      - apps/audits
+      - clusters/applications
+    verbs:
+      - '*'
+  - apiGroups:
+      - '*'
+    resources:
+      - clusters
+      - cluster
+    verbs:
+      - list
+  - apiGroups:
+      - monitoring.kubesphere.io
+      - monitoring.coreos.com
+      - metering.kubesphere.io
+      - servicemesh.kubesphere.io
+      - alerting.kubesphere.io
+      - network.kubesphere.io
+      - resources.kubesphere.io
+    resources:
+      - '*'
+    verbs:
+      - '*'
