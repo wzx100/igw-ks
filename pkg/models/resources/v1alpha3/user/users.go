@@ -91,6 +91,9 @@ func (d *usersGetter) List(_ string, query *query.Query) (*api.ListResult, error
 	if err != nil {
 		return nil, err
 	}
+	isWorkspaceManager := false
+	isBind := false
+	isEditMember := true
 	//企业空间管理员查询当前企业空间的成员
 	if loginusername != "" {
 		globalRoleBindings, _ := d.ksInformer.Iam().V1alpha2().GlobalRoleBindings().Lister().List(query.Selector())
@@ -98,17 +101,28 @@ func (d *usersGetter) List(_ string, query *query.Query) (*api.ListResult, error
 			if globalRoleBinding.Subjects[0].Name == string(loginusername) {
 				globalRole, _ := d.ksInformer.Iam().V1alpha2().GlobalRoles().Lister().Get(globalRoleBinding.RoleRef.Name)
 				if globalRole.Name == "workspaces-manager" || globalRole.Spec.ExtendFrom == "workspaces-manager" {
-					//说明是企业空间管理员,则查询该企业空间管理员绑定的用户
-					workspaceRoleBindings, _ := d.ksInformer.Iam().V1alpha2().WorkspaceRoleBindings().Lister().List(query.Selector())
-					for _, workspaceRoleBinding := range workspaceRoleBindings {
-						if workspaceRoleBinding.Subjects[0].Name == string(loginusername) {
-							workspaceName := strings.Split(workspaceRoleBinding.RoleRef.Name, "-")[0]
-							users, _ = d.listAllUsersInWorkspace(workspaceName, "")
+					//
+					isWorkspaceManager = true
+					if workspacename == "" || editmembers == "" {
+						isEditMember = false
+						//说明是企业空间管理员,则查询该企业空间管理员绑定的用户
+						workspaceRoleBindings, _ := d.ksInformer.Iam().V1alpha2().WorkspaceRoleBindings().Lister().List(query.Selector())
+						for _, workspaceRoleBinding := range workspaceRoleBindings {
+							if workspaceRoleBinding.Subjects[0].Name == string(loginusername) {
+								workspaceName := strings.Split(workspaceRoleBinding.RoleRef.Name, "-")[0]
+								users, _ = d.listAllUsersInWorkspace(workspaceName, "")
+								isBind = true
+								break
+							}
 						}
 					}
 				}
 			}
 		}
+	}
+	//是企业空间管理员/并且该企业空间管理员未绑定了企业空间,而且不是编辑成员查找
+	if isWorkspaceManager && !isBind && !isEditMember {
+		users = []*iamv1alpha2.User{}
 	}
 	var result []runtime.Object
 	for _, user := range users {
