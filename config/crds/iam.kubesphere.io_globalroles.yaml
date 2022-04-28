@@ -87,6 +87,8 @@ spec:
             properties:
               IsDefault:
                 type: string
+              creator:
+                type: string
               extendFrom:
                 description: 继承角色名
                 type: string
