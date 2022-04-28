@@ -1100,55 +1100,48 @@ func (h *iamHandler) DeleteUser(request *restful.Request, response *restful.Resp
 			api.HandleError(response, request, fmt.Errorf("==========查询用户信息为空==========="))
 			return
 		}
-		if operatoruser.Spec.OpTenantId == "" || operatoruser.Spec.OpCustomerId == "" {
-			fmt.Println("==========删除用户,获取当前登录用户为空===========")
-			api.HandleError(response, request, fmt.Errorf("==========删除用户,获取当前登录用户为空==========="))
-			return
+		if operatoruser.Spec.OpTenantId != "" || operatoruser.Spec.OpCustomerId != "" {
+			opuid := user.Spec.Opuid
+			if opuid != "" {
+				fmt.Println("========获取用户的opuid为:", opuid, "==============")
+				//调用op的删除用户接口
+				deleteUrl := DeleteUserUrl + "/" + opuid
+				opDeleteUserReq, err := http.NewRequest("POST", deleteUrl, nil)
+				if err != nil {
+					api.HandleInternalError(response, request, err)
+					return
+				}
+				opDeleteUserReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+				opDeleteUserReq.Header.Set("customer_id", user.Spec.OpCustomerId)
+				//opDeleteUserReq.Header.Set("customer_id", "739865515899486208")
+				opDeleteUserReq.Header.Set("tenant_id", user.Spec.OpTenantId)
+				//opDeleteUserReq.Header.Set("tenant_id", "1329701507709116418")
+				client := http.Client{}
+				resp, err := client.Do(opDeleteUserReq) //Do 方法发送请求，返回 HTTP 回复
+				if err != nil {
+					fmt.Println("=========调用op删除用户接口异常======", err.Error())
+					api.HandleInternalError(response, request, err)
+					return
+				}
+				data, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					api.HandleInternalError(response, request, err)
+					return
+				}
+				defer resp.Body.Close()
+				var userResp UserCenterResp
+				_ = json.Unmarshal(data, &userResp)
+				if userResp.Success == false {
+					fmt.Println("调用op删除用户接口失败:", userResp.Message)
+					err = errors.NewInternalError(fmt.Errorf(userResp.Message))
+					api.HandleInternalError(response, request, err)
+					return
+				} else {
+					fmt.Println("========<<删除op侧面用户成功<<=======")
+				}
+			}
 		}
-		fmt.Println("========originalTenantId:", operatoruser.Spec.OpTenantId, ",originalCustomerId:", operatoruser.Spec.OpCustomerId, "==============")
-
-		opuid := user.Spec.Opuid
-		if opuid != "" {
-			fmt.Println("========获取用户的opuid为:", opuid, "==============")
-			//调用op的删除用户接口
-			deleteUrl := DeleteUserUrl + "/" + opuid
-			opDeleteUserReq, err := http.NewRequest("POST", deleteUrl, nil)
-			if err != nil {
-				api.HandleInternalError(response, request, err)
-				return
-			}
-			opDeleteUserReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-			opDeleteUserReq.Header.Set("customer_id", user.Spec.OpCustomerId)
-			//opDeleteUserReq.Header.Set("customer_id", "739865515899486208")
-			opDeleteUserReq.Header.Set("tenant_id", user.Spec.OpTenantId)
-			//opDeleteUserReq.Header.Set("tenant_id", "1329701507709116418")
-			client := http.Client{}
-			resp, err := client.Do(opDeleteUserReq) //Do 方法发送请求，返回 HTTP 回复
-			if err != nil {
-				fmt.Println("=========调用op删除用户接口异常======", err.Error())
-				api.HandleInternalError(response, request, err)
-				return
-			}
-			data, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				api.HandleInternalError(response, request, err)
-				return
-			}
-			defer resp.Body.Close()
-			var userResp UserCenterResp
-			_ = json.Unmarshal(data, &userResp)
-			if userResp.Success == false {
-				fmt.Println("调用op删除用户接口失败:", userResp.Message)
-				err = errors.NewInternalError(fmt.Errorf(userResp.Message))
-				api.HandleInternalError(response, request, err)
-				return
-			} else {
-				fmt.Println("========<<删除op侧面用户成功<<=======")
-			}
-
-		}
-
 	}
 	err := h.im.DeleteUser(username)
 	if err != nil {
