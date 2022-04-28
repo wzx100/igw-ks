@@ -129,6 +129,7 @@ func (d *usersGetter) List(_ string, query *query.Query) (*api.ListResult, error
 	}
 	var result []runtime.Object
 	for _, user := range users {
+		isSkip := false
 		//编辑成员企业空间查看,查询未绑定企业空间的
 		if workspacename != "" && editmembers != "" {
 			for _, globalRoleBinding := range globalRoleBindings {
@@ -136,9 +137,13 @@ func (d *usersGetter) List(_ string, query *query.Query) (*api.ListResult, error
 					userRole, _ := d.ksInformer.Iam().V1alpha2().GlobalRoles().Lister().Get(globalRoleBinding.RoleRef.Name)
 					//如果是租户管理员或者是超管则不查询出来
 					if userRole.Name == "tenant-admin" || userRole.Spec.ExtendFrom == "platform-admin" || userRole.Name == "platform-admin" || userRole.Spec.ExtendFrom == "tenant-admin" {
-						continue
+						isSkip = true
+						break
 					}
 				}
+			}
+			if isSkip {
+				continue
 			}
 			workSpaceRoleBinds, _ := d.ksInformer.Iam().V1alpha2().WorkspaceRoleBindings().Lister().List(query.Selector())
 			//循环遍历
