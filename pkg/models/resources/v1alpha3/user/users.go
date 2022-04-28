@@ -52,6 +52,8 @@ func (d *usersGetter) Get(_, name string) (runtime.Object, error) {
 
 func (d *usersGetter) List(_ string, query *query.Query) (*api.ListResult, error) {
 
+	delete(query.Filters, iamv1alpha2.ScopeWorkspace)
+
 	editmembers := query.Filters["editmembers"]
 	if editmembers != "" {
 		delete(query.Filters, "editmembers")
@@ -75,7 +77,6 @@ func (d *usersGetter) List(_ string, query *query.Query) (*api.ListResult, error
 	} else if workspace := query.Filters[iamv1alpha2.ScopeWorkspace]; workspace != "" {
 		workspaceRole := query.Filters[iamv1alpha2.ResourcesSingularWorkspaceRole]
 		users, err = d.listAllUsersInWorkspace(string(workspace), string(workspaceRole))
-		delete(query.Filters, iamv1alpha2.ScopeWorkspace)
 		delete(query.Filters, iamv1alpha2.ResourcesSingularWorkspaceRole)
 		//集群级别
 	} else if cluster := query.Filters[iamv1alpha2.ScopeCluster]; cluster == "true" {
