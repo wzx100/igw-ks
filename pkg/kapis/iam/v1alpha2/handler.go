@@ -1185,6 +1185,7 @@ func (h *iamHandler) CreateGlobalRole(request *restful.Request, response *restfu
 		loginuser, _ := h.im.DescribeUser(operator.GetName())
 		if loginuser != nil && loginuser.Spec.OpTenantId != "" {
 			globalRole.Spec.OpTenantId = loginuser.Spec.OpTenantId
+			globalRole.Spec.Creator = loginuser.Name
 		}
 
 	}

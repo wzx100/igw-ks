@@ -93,6 +93,9 @@ func (d *globalrolesGetter) List(_ string, query *query.Query) (*api.ListResult,
 					continue
 				}
 			} else if globalRoleName == "workspaces-manager" {
+				if role.Spec.Creator != "" && role.Spec.Creator != string(loginuser) {
+					continue
+				}
 				//不是普通用户和继承自普通用户的
 				if role.Spec.ExtendFrom != "platform-regular" && role.Name != "platform-regular" {
 					continue
