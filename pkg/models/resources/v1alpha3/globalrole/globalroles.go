@@ -63,13 +63,8 @@ func (d *globalrolesGetter) List(_ string, query *query.Query) (*api.ListResult,
 	if err != nil {
 		return nil, err
 	}
-
 	globalRoleName := ""
-	value := query.Filters["managerUser"]
-	if stringValue := string(value); stringValue != "" {
-		delete(query.Filters, "managerUser")
-
-		//属于新建和编辑用户,需要根据登录用户角色来判断
+	if string(loginuser) != "" {
 		loginUserName := string(loginuser)
 		//查询登录用户角色绑定
 		globalRoleBindings, _ := d.sharedInformers.Iam().V1alpha2().GlobalRoleBindings().Lister().List(query.Selector())
@@ -84,10 +79,22 @@ func (d *globalrolesGetter) List(_ string, query *query.Query) (*api.ListResult,
 			}
 		}
 	}
+	value := query.Filters["managerUser"]
+	delete(query.Filters, "managerUser")
+
 	var result []runtime.Object
 	for _, role := range roles {
 		if globalRoleName != "" {
-			if globalRoleName == "platform-admin" || globalRoleName == "tenant-admin" {
+			//属于新建和编辑用户,需要根据登录用户角色来判断
+			if globalRoleName == "platform-admin" {
+				//新建和编辑用户
+				if stringValue := string(value); stringValue != "" {
+					//不是企业空间管理员和普通用户的
+					if role.Spec.ExtendFrom != "platform-regular" && role.Name != "platform-regular" && role.Spec.ExtendFrom != "workspaces-manager" && role.Name != "workspaces-manager" {
+						continue
+					}
+				}
+			} else if globalRoleName == "tenant-admin" {
 				//不是企业空间管理员和普通用户的
 				if role.Spec.ExtendFrom != "platform-regular" && role.Name != "platform-regular" && role.Spec.ExtendFrom != "workspaces-manager" && role.Name != "workspaces-manager" {
 					continue
@@ -103,7 +110,6 @@ func (d *globalrolesGetter) List(_ string, query *query.Query) (*api.ListResult,
 			} else {
 				continue
 			}
-
 		}
 		result = append(result, role)
 	}

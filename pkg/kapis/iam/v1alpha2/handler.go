@@ -1179,16 +1179,20 @@ func (h *iamHandler) CreateGlobalRole(request *restful.Request, response *restfu
 		globalRole.Annotations[iamv1alpha2.AggregationRolesAnnotation] = newstring
 	}
 
+	operator, _ := apirequest.UserFrom(request.Request.Context())
+	loginuser, _ := h.im.DescribeUser(operator.GetName())
 	opTenantId := globalRole.Spec.OpTenantId
 	if opTenantId == "" {
-		operator, _ := apirequest.UserFrom(request.Request.Context())
-		loginuser, _ := h.im.DescribeUser(operator.GetName())
 		if loginuser != nil && loginuser.Spec.OpTenantId != "" {
 			globalRole.Spec.OpTenantId = loginuser.Spec.OpTenantId
+		}
+	}
+	if globalRole.Spec.Creator == "" {
+		if loginuser != nil && loginuser.Name != "" {
 			globalRole.Spec.Creator = loginuser.Name
 		}
-
 	}
+
 	created, err := h.am.CreateOrUpdateGlobalRole(&globalRole)
 	if err != nil {
 		api.HandleError(response, request, err)
