@@ -871,6 +871,15 @@ func (h *iamHandler) UpdateUser(request *restful.Request, response *restful.Resp
 		api.HandleBadRequest(response, request, err)
 		return
 	}
+	if user.Spec.OpTenantId == "" {
+		operator, _ := apirequest.UserFrom(request.Request.Context())
+		if operator != nil {
+			operatoruser, _ := h.im.DescribeUser(operator.GetName())
+			if operatoruser != nil {
+				user.Spec.OpTenantId = operatoruser.Spec.OpTenantId
+			}
+		}
+	}
 
 	if username != user.Name {
 		err := fmt.Errorf("the name of the object (%s) does not match the name on the URL (%s)", user.Name, username)
@@ -1405,11 +1414,16 @@ func (h *iamHandler) CreateWorkspaceMembers(request *restful.Request, response *
 		if member.Operate == "bind" {
 			roleRef := ""
 			globalRole, _ := h.am.GetGlobalRoleOfUser(member.Username)
-			if globalRole.Spec.ExtendFrom != "" {
-				roleRef = globalRole.Spec.ExtendFrom
+			if globalRole != nil {
+				if globalRole.Spec.ExtendFrom != "" {
+					roleRef = globalRole.Spec.ExtendFrom
+				} else {
+					roleRef = globalRole.Name
+				}
 			} else {
-				roleRef = globalRole.Name
+				roleRef = "platform-regular"
 			}
+
 			role := ""
 			if roleRef == "platform-regular" {
 				role = workspace + "-viewer"
@@ -1791,11 +1805,14 @@ func (h *iamHandler) updateGlobalRoleBinding(operator authuser.Info, user *iamv1
 		newGlobalRoleSuperAuther = newGlobalRole.Name
 	}
 	globalRoleAuther := ""
-	if oldGlobalRole.Spec.ExtendFrom != "" {
-		globalRoleAuther = oldGlobalRole.Spec.ExtendFrom
-	} else {
-		globalRoleAuther = oldGlobalRole.Name
+	if oldGlobalRole != nil {
+		if oldGlobalRole.Spec.ExtendFrom != "" {
+			globalRoleAuther = oldGlobalRole.Spec.ExtendFrom
+		} else {
+			globalRoleAuther = oldGlobalRole.Name
+		}
 	}
+
 	if newGlobalRoleSuperAuther != globalRoleAuther {
 		//需要做权限的变更
 		workspaceRoleBindings, _ := h.am.ListWorkspaceRoleBindings(user.Name, nil, "")

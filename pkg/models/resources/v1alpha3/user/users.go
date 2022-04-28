@@ -17,8 +17,6 @@ limitations under the License.
 package user
 
 import (
-	v1alpha2 "kubesphere.io/api/iam/v1alpha2"
-
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -52,8 +50,6 @@ func (d *usersGetter) Get(_, name string) (runtime.Object, error) {
 
 func (d *usersGetter) List(_ string, query *query.Query) (*api.ListResult, error) {
 
-	delete(query.Filters, iamv1alpha2.ScopeWorkspace)
-
 	editmembers := query.Filters["editmembers"]
 	if editmembers != "" {
 		delete(query.Filters, "editmembers")
@@ -67,6 +63,9 @@ func (d *usersGetter) List(_ string, query *query.Query) (*api.ListResult, error
 	var users []*iamv1alpha2.User
 	var err error
 
+	if workspacename != "" && editmembers != "" {
+		delete(query.Filters, iamv1alpha2.ScopeWorkspace)
+	}
 	//项目
 	if namespace := query.Filters[iamv1alpha2.ScopeNamespace]; namespace != "" {
 		role := query.Filters[iamv1alpha2.ResourcesSingularRole]
@@ -78,6 +77,7 @@ func (d *usersGetter) List(_ string, query *query.Query) (*api.ListResult, error
 		workspaceRole := query.Filters[iamv1alpha2.ResourcesSingularWorkspaceRole]
 		users, err = d.listAllUsersInWorkspace(string(workspace), string(workspaceRole))
 		delete(query.Filters, iamv1alpha2.ResourcesSingularWorkspaceRole)
+		delete(query.Filters, iamv1alpha2.ScopeWorkspace)
 		//集群级别
 	} else if cluster := query.Filters[iamv1alpha2.ScopeCluster]; cluster == "true" {
 		clusterRole := query.Filters[iamv1alpha2.ResourcesSingularClusterRole]
@@ -98,13 +98,11 @@ func (d *usersGetter) List(_ string, query *query.Query) (*api.ListResult, error
 	isBind := false
 	isEditMember := true
 	//企业空间管理员查询当前企业空间的成员
-	var loginUserGlobalRole *v1alpha2.GlobalRole
+	globalRoleBindings, _ := d.ksInformer.Iam().V1alpha2().GlobalRoleBindings().Lister().List(query.Selector())
 	if loginusername != "" {
-		globalRoleBindings, _ := d.ksInformer.Iam().V1alpha2().GlobalRoleBindings().Lister().List(query.Selector())
 		for _, globalRoleBinding := range globalRoleBindings {
 			if globalRoleBinding.Subjects[0].Name == string(loginusername) {
 				globalRole, _ := d.ksInformer.Iam().V1alpha2().GlobalRoles().Lister().Get(globalRoleBinding.RoleRef.Name)
-				loginUserGlobalRole = globalRole
 				if globalRole.Name == "workspaces-manager" || globalRole.Spec.ExtendFrom == "workspaces-manager" {
 
 					isWorkspaceManager = true
@@ -133,9 +131,14 @@ func (d *usersGetter) List(_ string, query *query.Query) (*api.ListResult, error
 	for _, user := range users {
 		//编辑成员企业空间查看,查询未绑定企业空间的
 		if workspacename != "" && editmembers != "" {
-			//如果是租户管理员或者是超管则不查询出来
-			if loginUserGlobalRole.Name == "tenant-admin" || loginUserGlobalRole.Spec.ExtendFrom == "platform-admin" || loginUserGlobalRole.Name == "platform-admin" || loginUserGlobalRole.Spec.ExtendFrom == "tenant-admin" {
-				continue
+			for _, globalRoleBinding := range globalRoleBindings {
+				if globalRoleBinding.Subjects[0].Name == user.Name {
+					userRole, _ := d.ksInformer.Iam().V1alpha2().GlobalRoles().Lister().Get(globalRoleBinding.RoleRef.Name)
+					//如果是租户管理员或者是超管则不查询出来
+					if userRole.Name == "tenant-admin" || userRole.Spec.ExtendFrom == "platform-admin" || userRole.Name == "platform-admin" || userRole.Spec.ExtendFrom == "tenant-admin" {
+						continue
+					}
+				}
 			}
 			workSpaceRoleBinds, _ := d.ksInformer.Iam().V1alpha2().WorkspaceRoleBindings().Lister().List(query.Selector())
 			//循环遍历
