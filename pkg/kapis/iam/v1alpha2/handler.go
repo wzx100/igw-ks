@@ -1015,7 +1015,7 @@ func (h *iamHandler) ModifyPassword(request *restful.Request, response *restful.
 			return
 		} else {
 			if operatoruser != nil && operatoruser.Spec.OpAccessToken != "" {
-				//调用onepower的登出接口
+				klog.Infof("======调用onepower的登出接口============")
 				opAcessToken := operatoruser.Spec.OpAccessToken
 				klog.Error("调用OP登出接口，opAccessToken:", opAcessToken)
 				opLogoutReq, err := http.NewRequest("GET", logoutUrl+"?token="+opAcessToken, nil)
@@ -1028,9 +1028,12 @@ func (h *iamHandler) ModifyPassword(request *restful.Request, response *restful.
 				_, err = client.Do(opLogoutReq)
 
 				if err != nil {
-					klog.Error("调用OP的登出接口出错, error: %v", err)
+					klog.Error("=======调用OP的登出接口出错======, error: %v", err)
 					api.HandleInternalError(response, request, errors.NewInternalError(err))
 					return
+				} else {
+					klog.Infof("======调用onepower的登出接口成功============")
+
 				}
 			}
 		}
