@@ -83,7 +83,7 @@ type userResp struct {
 
 //const ChangePasswordUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4/portalcustomer/v1.0.0/user-center/userinfo/self/pwd"
 //const ChangePasswordUrl = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo/self/pwd"
-const ChangePasswordUrl = "http://coreop.ftzq.internal.virtueit.net/v4-snapshot/portalcustomer/v1.0.0/user-center/userinfo/self/pwd"
+const ChangePasswordUrl = "http://coreop.ftzq.internal.virtueit.net:81/v4-snapshot/portalcustomer/v1.0.0/user-center/userinfo/self/pwd"
 
 const finalizer = "finalizers.kubesphere.io/users"
 
