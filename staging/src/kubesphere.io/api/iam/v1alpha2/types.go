@@ -20,6 +20,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"strings"
 )
 
 const (
@@ -223,6 +224,26 @@ type GolbalSpec struct {
 
 	IsDefault string `json:"IsDefault"`
 	Creator   string `json:"creator"`
+}
+
+type OpGlobelRoleList []*GlobalRole
+
+func (I OpGlobelRoleList) Len() int {
+
+	return len(I)
+
+}
+
+func (I OpGlobelRoleList) Less(i, j int) bool {
+
+	return strings.Compare(I[i].Spec.IsDefault, I[j].Spec.IsDefault) > 0
+
+}
+
+func (I OpGlobelRoleList) Swap(i, j int) {
+
+	I[i], I[j] = I[j], I[i]
+
 }
 
 // +kubebuilder:object:root=true

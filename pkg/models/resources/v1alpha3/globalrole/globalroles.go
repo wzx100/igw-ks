@@ -113,8 +113,9 @@ func (d *globalrolesGetter) List(_ string, query *query.Query) (*api.ListResult,
 		}
 		result = append(result, role)
 	}
+	apiresult, err := v1alpha3.DefaultList(result, query, d.compare, d.filter), nil
 
-	return v1alpha3.DefaultList(result, query, d.compare, d.filter), nil
+	return apiresult, err
 }
 
 func (d *globalrolesGetter) compare(left runtime.Object, right runtime.Object, field query.Field) bool {
