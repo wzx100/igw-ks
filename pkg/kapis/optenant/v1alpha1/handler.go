@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/emicklei/go-restful"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/klog"
 	optenantv1alpha1 "kubesphere.io/api/optenant/v1alpha1"
 	tenantv1alpha1 "kubesphere.io/api/optenant/v1alpha1"
 	tenantv1alpha2 "kubesphere.io/api/tenant/v1alpha2"
@@ -98,12 +99,12 @@ func (h *optenantHandler) ListOpTenants(request *restful.Request, response *rest
 	}
 	operatoruser, err := h.im.DescribeUser(operator.GetName())
 	if err != nil {
-		fmt.Println("=========查询用户信息异常======", err.Error())
+		klog.Error("=========查询用户信息异常======", err.Error())
 		api.HandleInternalError(response, request, err)
 		return
 	}
 	if operatoruser == nil {
-		fmt.Println("==========查询用户信息为空===========")
+		klog.Error("==========查询用户信息为空===========")
 		api.HandleError(response, request, fmt.Errorf("==========查询用户信息为空==========="))
 		return
 	}

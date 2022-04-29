@@ -636,11 +636,11 @@ func (h *handler) logout(req *restful.Request, resp *restful.Response) {
 	authenticated, ok := request.UserFrom(req.Request.Context())
 
 	operatoruser, _ := h.im.DescribeUser(authenticated.GetName())
-	fmt.Println("用户登出，当前用户名为:", authenticated.GetName(), ",用户的opAccessToken:", operatoruser.Spec.OpAccessToken)
+	klog.Error("用户登出，当前用户名为:", authenticated.GetName(), ",用户的opAccessToken:", operatoruser.Spec.OpAccessToken)
 	if operatoruser != nil && operatoruser.Spec.OpAccessToken != "" {
 		//调用onepower的登出接口
 		opAcessToken := operatoruser.Spec.OpAccessToken
-		fmt.Println("调用OP登出接口，opAccessToken:", opAcessToken)
+		klog.Error("调用OP登出接口，opAccessToken:", opAcessToken)
 		opLogoutReq, err := http.NewRequest("GET", logoutUrl+"?token="+opAcessToken, nil)
 		tr := &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -651,7 +651,7 @@ func (h *handler) logout(req *restful.Request, resp *restful.Response) {
 		_, err = client.Do(opLogoutReq)
 
 		if err != nil {
-			fmt.Println("调用OP的登出接口出错, error: %v", err)
+			klog.Error("调用OP的登出接口出错, error: %v", err)
 			api.HandleInternalError(resp, req, apierrors.NewInternalError(err))
 			return
 		}

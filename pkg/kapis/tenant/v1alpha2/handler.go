@@ -75,17 +75,17 @@ func (h *tenantHandler) ListWorkspaces(req *restful.Request, resp *restful.Respo
 	}
 	operatoruser, err := h.im.DescribeUser(user.GetName())
 	if err != nil {
-		fmt.Println("=========查询用户信息异常======", err.Error())
+		klog.Error("=========查询用户信息异常======", err.Error())
 		api.HandleInternalError(resp, req, err)
 		return
 	}
 	if operatoruser == nil {
-		fmt.Println("==========查询用户信息为空===========")
+		klog.Error("==========查询用户信息为空===========")
 		api.HandleError(resp, req, fmt.Errorf("==========查询用户信息为空==========="))
 		return
 	}
 	if operatoruser.Spec.OpTenantId != "" {
-		fmt.Println("=========查询企业空间---当前用户名:", operatoruser.GetName(), "当前用户optenantid:", operatoruser.Spec.OpTenantId, "======")
+		klog.Error("=========查询企业空间---当前用户名:", operatoruser.GetName(), "当前用户optenantid:", operatoruser.Spec.OpTenantId, "======")
 		queryParam.Filters["optenantid"] = query.Value(operatoruser.Spec.OpTenantId)
 	}
 

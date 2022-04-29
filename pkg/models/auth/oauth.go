@@ -160,7 +160,7 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 			client := http.Client{}
 			opResp, err := client.Do(opUserInfoReq) //Do 方法发送请求，返回 HTTP 回复
 			if err != nil {
-				fmt.Println("=========调用op查询用户接口异常======", err.Error())
+				klog.Error("=========调用op查询用户接口异常======", err.Error())
 				return nil, providerOptions.Name, err
 			}
 			data, err := ioutil.ReadAll(opResp.Body)
@@ -178,13 +178,13 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 					jsonByte, _ := json.Marshal(userCenterResp.Data)
 					errorMessage = string(jsonByte)
 				}
-				fmt.Println("调用op查询用户信息接口失败:", errorMessage)
+				klog.Error("调用op查询用户信息接口失败:", errorMessage)
 
 				err = errors.NewInternalError(fmt.Errorf(errorMessage))
 				return nil, providerOptions.Name, err
 			} else {
 				isMain := userCenterResp.Data.IsAdmin
-				fmt.Println("调用op查询用户信息接口返回isMain:", isMain)
+				klog.Error("调用op查询用户信息接口返回isMain:", isMain)
 				globalRole := ""
 				if isMain == IsAdmin {
 					//绑定租户管理员
@@ -217,12 +217,12 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 		client := http.Client{}
 		opResp, err := client.Do(opMainInfoReq) //Do 方法发送请求，返回 HTTP 回复
 		if err != nil {
-			fmt.Println("=========调用op查询租户接口异常======", err.Error())
+			klog.Error("=========调用op查询租户接口异常======", err.Error())
 			return nil, providerOptions.Name, err
 		}
 		data, err := ioutil.ReadAll(opResp.Body)
 		if err != nil {
-			fmt.Println("=========解析op查询租户信息异常======", err.Error())
+			klog.Error("=========解析op查询租户信息异常======", err.Error())
 			return nil, providerOptions.Name, err
 		}
 		defer opResp.Body.Close()
@@ -236,7 +236,7 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 				jsonByte, _ := json.Marshal(userCenterResp.Data)
 				errorMessage = string(jsonByte)
 			}
-			fmt.Println("调用op查询租户信息接口失败:", errorMessage)
+			klog.Error("调用op查询租户信息接口失败:", errorMessage)
 
 			err = errors.NewInternalError(fmt.Errorf(errorMessage))
 			return nil, providerOptions.Name, err
@@ -247,7 +247,7 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 			//租户名称
 			mainName := userCenterResp.Data.MainName
 			mainId := userCenterResp.Data.MainId
-			fmt.Println("调用op查询租户信息接口数据为userName:", userName, ",mainName:", mainName, ",mainId:", mainId)
+			klog.Error("调用op查询租户信息接口数据为userName:", userName, ",mainName:", mainName, ",mainId:", mainId)
 			opTenantInfo, err := o.opTenantGroup.DescribeOpTenant(mainId)
 			if opTenantInfo == nil {
 				//新增
@@ -262,7 +262,7 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 				}
 				_, err = o.opTenantGroup.CreateOpTenant(opTenantInfo)
 				if err != nil {
-					fmt.Println("=========创建租户信息异常======", err.Error())
+					klog.Error("=========创建租户信息异常======", err.Error())
 					return nil, providerOptions.Name, err
 				}
 			} else {
@@ -278,7 +278,7 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 				}
 				_, err = o.opTenantGroup.UpdateOpTenant(opTenantInfo)
 				if err != nil {
-					fmt.Println("=========更新租户信息异常======", err.Error())
+					klog.Error("=========更新租户信息异常======", err.Error())
 					return nil, providerOptions.Name, err
 				}
 			}
@@ -286,7 +286,7 @@ func (o *oauthAuthenticator) Authenticate(_ context.Context, provider string, re
 
 	}
 
-	fmt.Println("===========>登录跳转成功结束<=========")
+	klog.Error("===========>登录跳转成功结束<=========")
 
 	if user != nil {
 		return &authuser.DefaultInfo{Name: user.GetName()}, providerOptions.Name, nil

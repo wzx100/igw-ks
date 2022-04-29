@@ -340,12 +340,12 @@ func (h *iamHandler) ListUsers(request *restful.Request, response *restful.Respo
 	}
 	operatoruser, err := h.im.DescribeUser(operator.GetName())
 	if err != nil {
-		fmt.Println("=========查询用户信息异常======", err.Error())
+		klog.Error("=========查询用户信息异常======", err.Error())
 		api.HandleInternalError(response, request, err)
 		return
 	}
 	if operatoruser == nil {
-		fmt.Println("==========查询用户信息为空===========")
+		klog.Error("==========查询用户信息为空===========")
 		api.HandleError(response, request, fmt.Errorf("==========查询用户信息为空==========="))
 		return
 	}
@@ -457,12 +457,12 @@ func (h *iamHandler) ListGlobalRoles(req *restful.Request, resp *restful.Respons
 	}
 	operatoruser, err := h.im.DescribeUser(operator.GetName())
 	if err != nil {
-		fmt.Println("=========查询用户信息异常======", err.Error())
+		klog.Error("=========查询用户信息异常======", err.Error())
 		api.HandleInternalError(resp, req, err)
 		return
 	}
 	if operatoruser == nil {
-		fmt.Println("==========查询用户信息为空===========")
+		klog.Error("==========查询用户信息为空===========")
 		api.HandleError(resp, req, fmt.Errorf("==========查询用户信息为空==========="))
 		return
 	}
@@ -678,14 +678,14 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 		}
 	}
 	operatorname := user.ObjectMeta.Annotations["kubesphere.io/creator"]
-	fmt.Println("当前操作用户为:", operatorname)
+	klog.Error("当前操作用户为:", operatorname)
 	operatoruser, err := h.im.DescribeUser(operatorname)
 
 	if err != nil {
-		fmt.Println("=========查询用户信息为空======", err.Error())
+		klog.Error("=========查询用户信息为空======", err.Error())
 	}
 	if operatoruser != nil && operatoruser.Spec.OpTenantId != "" && operatoruser.Spec.OpCustomerId != "" && operatoruser.Spec.OpDeptId != "" {
-		fmt.Println("========originalTenantId:", operatoruser.Spec.OpTenantId, ",originalCustomerId:", operatoruser.Spec.OpCustomerId, ",deptId:", operatoruser.Spec.OpDeptId, "==============")
+		klog.Error("========originalTenantId:", operatoruser.Spec.OpTenantId, ",originalCustomerId:", operatoruser.Spec.OpCustomerId, ",deptId:", operatoruser.Spec.OpDeptId, "==============")
 		//调用op新增用户接口
 		//JSON序列化
 		config := map[string]interface{}{}
@@ -724,7 +724,7 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 		client := http.Client{}
 		opResp, err := client.Do(opCreateReq) //Do 方法发送请求，返回 HTTP 回复
 		if err != nil {
-			fmt.Println("=========调用op新增用户接口异常======", err.Error())
+			klog.Error("=========调用op新增用户接口异常======", err.Error())
 			api.HandleInternalError(resp, req, err)
 			return
 		}
@@ -748,7 +748,7 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 				jsonByte, _ := json.Marshal(userCenterResp.Data)
 				errorMessage = string(jsonByte)
 			}
-			fmt.Println("调用op新增用户接口失败:", errorMessage)
+			klog.Error("调用op新增用户接口失败:", errorMessage)
 
 			err = errors.NewInternalError(fmt.Errorf(errorMessage))
 			api.HandleInternalError(resp, req, err)
@@ -758,7 +758,7 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 			var userResp userResp
 			err = json.Unmarshal(data, &userResp)
 			opuid := userResp.Data
-			fmt.Println("==========获取到返回的op用户uid为:", opuid, "=========")
+			klog.Error("==========获取到返回的op用户uid为:", opuid, "=========")
 			user.Spec.Opuid = opuid
 			//查询用户信息
 			opUserInfoReq, err := http.NewRequest("GET", QueryUserInfoUrl+"/"+user.Spec.Opuid, nil)
@@ -773,7 +773,7 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 			client := http.Client{}
 			opResp, err := client.Do(opUserInfoReq) //Do 方法发送请求，返回 HTTP 回复
 			if err != nil {
-				fmt.Println("=========调用op查询用户接口异常======", err.Error())
+				klog.Error("=========调用op查询用户接口异常======", err.Error())
 				api.HandleInternalError(resp, req, err)
 				return
 			}
@@ -793,7 +793,7 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 					jsonByte, _ := json.Marshal(userCenterResp.Data)
 					errorMessage = string(jsonByte)
 				}
-				fmt.Println("调用op查询用户信息接口失败:", errorMessage)
+				klog.Error("调用op查询用户信息接口失败:", errorMessage)
 
 				err = errors.NewInternalError(fmt.Errorf(errorMessage))
 				api.HandleInternalError(resp, req, err)
@@ -810,7 +810,7 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 			}
 		}
 	} else {
-		fmt.Println("==========查询用户op部分信息为空,新增的为超级管理员=========")
+		klog.Error("==========查询用户op部分信息为空,新增的为超级管理员=========")
 	}
 
 	user.ObjectMeta.Finalizers = append(user.ObjectMeta.Finalizers, finalizer)
@@ -960,27 +960,27 @@ func (h *iamHandler) ModifyPassword(request *restful.Request, response *restful.
 			return
 		}
 		opChangePwdReq.Header.Set("Content-Type", "application/json")
-		fmt.Println("当前操作用户为:", operator.GetName())
+		klog.Error("当前操作用户为:", operator.GetName())
 
 		operatorname := operator.GetName()
 		operatoruser, err := h.im.DescribeUser(operatorname)
 
 		if err != nil {
-			fmt.Println("=========查询用户信息异常======", err.Error())
+			klog.Error("=========查询用户信息异常======", err.Error())
 			api.HandleInternalError(response, request, err)
 			return
 		}
 		if operatoruser == nil {
-			fmt.Println("==========查询用户信息为空===========")
+			klog.Error("==========查询用户信息为空===========")
 			api.HandleError(response, request, fmt.Errorf("==========查询用户信息为空==========="))
 			return
 		}
 		if operatoruser.Spec.OpTenantId == "" || operatoruser.Spec.OpCustomerId == "" {
-			fmt.Println("==========修改密码,获取当前登录用户为空===========")
+			klog.Error("==========修改密码,获取当前登录用户为空===========")
 			api.HandleError(response, request, fmt.Errorf("==========修改密码,获取当前登录用户为空==========="))
 			return
 		}
-		fmt.Println("========originalTenantId:", operatoruser.Spec.OpTenantId, ",originalCustomerId:", operatoruser.Spec.OpCustomerId, "==============")
+		klog.Error("========originalTenantId:", operatoruser.Spec.OpTenantId, ",originalCustomerId:", operatoruser.Spec.OpCustomerId, "==============")
 
 		opChangePwdReq.Header.Set("customer_id", operatoruser.Spec.OpCustomerId)
 		opChangePwdReq.Header.Set("tenant_id", operatoruser.Spec.OpTenantId)
@@ -989,7 +989,7 @@ func (h *iamHandler) ModifyPassword(request *restful.Request, response *restful.
 		client := http.Client{}
 		resp, err := client.Do(opChangePwdReq) //Do 方法发送请求，返回 HTTP 回复
 		if err != nil {
-			fmt.Println("=========调用op修改密码接口异常======", err.Error())
+			klog.Error("=========调用op修改密码接口异常======", err.Error())
 			api.HandleInternalError(response, request, err)
 			return
 		}
@@ -1006,7 +1006,7 @@ func (h *iamHandler) ModifyPassword(request *restful.Request, response *restful.
 		//	return
 		//}
 		if userResp.Success == false {
-			fmt.Println("调用op修改密码接口失败:", userResp.Message)
+			klog.Error("调用op修改密码接口失败:", userResp.Message)
 			err = errors.NewInternalError(fmt.Errorf(userResp.Message))
 			api.HandleInternalError(response, request, err)
 			return
@@ -1026,21 +1026,21 @@ func (h *iamHandler) ResetPassword(request *restful.Request, response *restful.R
 			operatorname := operator.GetName()
 			operatoruser, err := h.im.DescribeUser(operatorname)
 			if err != nil {
-				fmt.Println("=========查询用户信息异常======", err.Error())
+				klog.Error("=========查询用户信息异常======", err.Error())
 				api.HandleInternalError(response, request, err)
 				return
 			}
 			if operatoruser == nil {
-				fmt.Println("==========查询用户信息为空===========")
+				klog.Error("==========查询用户信息为空===========")
 				api.HandleError(response, request, fmt.Errorf("==========查询用户信息为空==========="))
 				return
 			}
 			if operatoruser.Spec.OpTenantId == "" || operatoruser.Spec.OpCustomerId == "" {
-				fmt.Println("==========重置密码,获取当前登录用户为空===========")
+				klog.Error("==========重置密码,获取当前登录用户为空===========")
 				api.HandleError(response, request, fmt.Errorf("==========重置密码,获取当前登录用户为空==========="))
 				return
 			}
-			fmt.Println("========originalTenantId:", operatoruser.Spec.OpTenantId, ",originalCustomerId:", operatoruser.Spec.OpCustomerId, "==============")
+			klog.Error("========originalTenantId:", operatoruser.Spec.OpTenantId, ",originalCustomerId:", operatoruser.Spec.OpCustomerId, "==============")
 			//调用op的删除用户接口
 			resetPasswordUrl := ResetUserPassword + "/" + opuid
 			opResetPasswordReq, err := http.NewRequest("POST", resetPasswordUrl, nil)
@@ -1056,7 +1056,7 @@ func (h *iamHandler) ResetPassword(request *restful.Request, response *restful.R
 			client := http.Client{}
 			resp, err := client.Do(opResetPasswordReq) //Do 方法发送请求，返回 HTTP 回复
 			if err != nil {
-				fmt.Println("=========调用op重置密码接口异常======", err.Error())
+				klog.Error("=========调用op重置密码接口异常======", err.Error())
 				api.HandleInternalError(response, request, err)
 				return
 			}
@@ -1073,7 +1073,7 @@ func (h *iamHandler) ResetPassword(request *restful.Request, response *restful.R
 			//	return
 			//}
 			if userResp.Success == false {
-				fmt.Println("调用op重置密码接口失败:", userResp.Message)
+				klog.Error("调用op重置密码接口失败:", userResp.Message)
 				err = errors.NewInternalError(fmt.Errorf(userResp.Message))
 				api.HandleInternalError(response, request, err)
 				return
@@ -1094,25 +1094,25 @@ func (h *iamHandler) DeleteUser(request *restful.Request, response *restful.Resp
 	user, _ := h.im.DescribeUser(username)
 	if user != nil {
 		operator, _ := apirequest.UserFrom(request.Request.Context())
-		fmt.Println("当前操作用户为:", operator.GetName())
+		klog.Error("当前操作用户为:", operator.GetName())
 
 		operatorname := operator.GetName()
 		operatoruser, err := h.im.DescribeUser(operatorname)
 
 		if err != nil {
-			fmt.Println("=========查询用户信息异常======", err.Error())
+			klog.Error("=========查询用户信息异常======", err.Error())
 			api.HandleInternalError(response, request, err)
 			return
 		}
 		if operatoruser == nil {
-			fmt.Println("==========查询用户信息为空===========")
+			klog.Error("==========查询用户信息为空===========")
 			api.HandleError(response, request, fmt.Errorf("==========查询用户信息为空==========="))
 			return
 		}
 		if operatoruser.Spec.OpTenantId != "" || operatoruser.Spec.OpCustomerId != "" {
 			opuid := user.Spec.Opuid
 			if opuid != "" {
-				fmt.Println("========获取用户的opuid为:", opuid, "==============")
+				klog.Error("========获取用户的opuid为:", opuid, "==============")
 				//调用op的删除用户接口
 				deleteUrl := DeleteUserUrl + "/" + opuid
 				opDeleteUserReq, err := http.NewRequest("POST", deleteUrl, nil)
@@ -1129,7 +1129,7 @@ func (h *iamHandler) DeleteUser(request *restful.Request, response *restful.Resp
 				client := http.Client{}
 				resp, err := client.Do(opDeleteUserReq) //Do 方法发送请求，返回 HTTP 回复
 				if err != nil {
-					fmt.Println("=========调用op删除用户接口异常======", err.Error())
+					klog.Error("=========调用op删除用户接口异常======", err.Error())
 					api.HandleInternalError(response, request, err)
 					return
 				}
@@ -1142,12 +1142,12 @@ func (h *iamHandler) DeleteUser(request *restful.Request, response *restful.Resp
 				var userResp UserCenterResp
 				_ = json.Unmarshal(data, &userResp)
 				if userResp.Success == false {
-					fmt.Println("调用op删除用户接口失败:", userResp.Message)
+					klog.Error("调用op删除用户接口失败:", userResp.Message)
 					err = errors.NewInternalError(fmt.Errorf(userResp.Message))
 					api.HandleInternalError(response, request, err)
 					return
 				} else {
-					fmt.Println("========<<删除op侧面用户成功<<=======")
+					klog.Error("========<<删除op侧面用户成功<<=======")
 				}
 			}
 		}
