@@ -130,7 +130,7 @@ func (h *tenantHandler) ListWorkspaces(req *restful.Request, resp *restful.Respo
 			}
 		}
 		str := strings.Replace(strings.Trim(fmt.Sprint(workspaces), "[]"), " ", ",", -1)
-		workspace.Spec.Manager = str
+		workspace.Spec.OpManager = str
 		result.Items[i] = workspace
 	}
 	if err != nil {
