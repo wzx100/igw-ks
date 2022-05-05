@@ -469,7 +469,7 @@ func (h *iamHandler) ListGlobalRoles(req *restful.Request, resp *restful.Respons
 		api.HandleError(resp, req, fmt.Errorf("==========查询用户信息为空==========="))
 		return
 	}
-	if operatoruser.Spec.OpTenantId != "" && string(queryParam.Filters["iam.kubesphere.io/role-template"]) == "" {
+	if operatoruser.Spec.OpTenantId != "" && string(queryParam.Filters["label"]) != "iam.kubesphere.io/role-template=true" {
 		queryParam.Filters["optenantid"] = query.Value(operatoruser.Spec.OpTenantId)
 		queryParam.Filters["loginuser"] = query.Value(operatoruser.Name)
 
