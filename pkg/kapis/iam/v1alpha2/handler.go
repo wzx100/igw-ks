@@ -478,6 +478,22 @@ func (h *iamHandler) ListGlobalRoles(req *restful.Request, resp *restful.Respons
 
 	}
 	result, err := h.am.ListGlobalRoles(queryParam)
+
+	for _, item := range result.Items {
+		globalrole := item.(*iamv1alpha2.GlobalRole)
+
+		if globalrole.Spec.OpTenantId != "" {
+			opTenant, err := h.opTenantGroup.DescribeOpTenant(globalrole.Spec.OpTenantId)
+			if err != nil {
+				api.HandleInternalError(resp, req, err)
+				return
+			}
+			if opTenant != nil {
+				tenantName := opTenant.Spec.TenantName
+				globalrole.Spec.OpTenantName = tenantName
+			}
+		}
+	}
 	if err != nil {
 		api.HandleInternalError(resp, req, err)
 		return

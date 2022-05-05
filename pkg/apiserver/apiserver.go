@@ -242,7 +242,7 @@ func (s *APIServer) installKubeSphereAPIs() {
 	tenantInterface := tenant.New(*optenantGetter, s.InformerFactory, s.KubernetesClient.Kubernetes(), s.KubernetesClient.KubeSphere(), s.EventsClient, s.LoggingClient, s.AuditingClient, amOperator, rbacAuthorizer, s.MonitoringClient, resourceGetter)
 	opTenantOperator := optenant.New(optenantGetter, s.InformerFactory, s.KubernetesClient.KubeSphere(), s.KubernetesClient.Kubernetes())
 
-	urlruntime.Must(tenantv1alpha2.AddToContainer(tenantInterface, opTenantOperator, imOperator, s.container, s.Config.MeteringOptions))
+	urlruntime.Must(tenantv1alpha2.AddToContainer(amOperator, tenantInterface, opTenantOperator, imOperator, s.container, s.Config.MeteringOptions))
 
 	urlruntime.Must(iamapi.AddToContainer(opTenantOperator, s.container, imOperator, amOperator,
 		group.New(s.InformerFactory, s.KubernetesClient.KubeSphere(), s.KubernetesClient.Kubernetes()),

@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha2
 
 import (
+	"kubesphere.io/kubesphere/pkg/models/iam/am"
 	"kubesphere.io/kubesphere/pkg/models/iam/im"
 	"kubesphere.io/kubesphere/pkg/models/optenant"
 	"net/http"
@@ -53,12 +54,12 @@ func Resource(resource string) schema.GroupResource {
 	return GroupVersion.WithResource(resource).GroupResource()
 }
 
-func AddToContainer(tenant tenant.Interface, opTenantGroup optenant.OpTenantOperator, im im.IdentityManagementInterface, c *restful.Container,
+func AddToContainer(am am.AccessManagementInterface, tenant tenant.Interface, opTenantGroup optenant.OpTenantOperator, im im.IdentityManagementInterface, c *restful.Container,
 	meteringOptions *meteringclient.Options) error {
 	mimePatch := []string{restful.MIME_JSON, runtime.MimeMergePatchJson, runtime.MimeJsonPatchJson}
 
 	ws := runtime.NewWebService(GroupVersion)
-	handler := newTenantHandler(tenant, opTenantGroup, im, meteringOptions)
+	handler := newTenantHandler(am, tenant, opTenantGroup, im, meteringOptions)
 
 	ws.Route(ws.GET("/clusters").
 		To(handler.ListClusters).

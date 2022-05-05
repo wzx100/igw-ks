@@ -46,6 +46,10 @@ func (d *globalrolesGetter) Get(_, name string) (runtime.Object, error) {
 
 func (d *globalrolesGetter) List(_ string, query *query.Query) (*api.ListResult, error) {
 
+	opTenantName := query.Filters["opTenantName"]
+	if string(opTenantName) != "" {
+		delete(query.Filters, "opTenantName")
+	}
 	loginuser := query.Filters["loginuser"]
 	if string(loginuser) != "" {
 		delete(query.Filters, "loginuser")
@@ -84,6 +88,21 @@ func (d *globalrolesGetter) List(_ string, query *query.Query) (*api.ListResult,
 
 	var result []runtime.Object
 	for _, role := range roles {
+		if string(opTenantName) != "" {
+			if role.Spec.OpTenantId != "" {
+				optenant, err := d.sharedInformers.OpTenant().V1alpha1().OpTenants().Lister().Get(role.Spec.OpTenantId)
+				if err != nil {
+					return nil, err
+				}
+				if optenant != nil {
+					if !strings.Contains(optenant.Spec.TenantName, string(opTenantName)) {
+						continue
+					}
+				}
+			} else {
+				continue
+			}
+		}
 		if globalRoleName != "" {
 			//属于新建和编辑用户,需要根据登录用户角色来判断
 			if globalRoleName == "platform-admin" {

@@ -19,8 +19,10 @@ package v1alpha2
 import (
 	"encoding/json"
 	"fmt"
+	"kubesphere.io/kubesphere/pkg/models/iam/am"
 	"kubesphere.io/kubesphere/pkg/models/iam/im"
 	"kubesphere.io/kubesphere/pkg/models/optenant"
+	"strings"
 
 	"github.com/emicklei/go-restful"
 	corev1 "k8s.io/api/core/v1"
@@ -44,13 +46,14 @@ import (
 )
 
 type tenantHandler struct {
+	am              am.AccessManagementInterface
 	im              im.IdentityManagementInterface
 	opTenantGroup   optenant.OpTenantOperator
 	tenant          tenant.Interface
 	meteringOptions *meteringclient.Options
 }
 
-func newTenantHandler(tenant tenant.Interface, opTenantGroup optenant.OpTenantOperator, im im.IdentityManagementInterface,
+func newTenantHandler(am am.AccessManagementInterface, tenant tenant.Interface, opTenantGroup optenant.OpTenantOperator, im im.IdentityManagementInterface,
 	meteringOptions *meteringclient.Options) *tenantHandler {
 
 	if meteringOptions == nil || meteringOptions.RetentionDay == "" {
@@ -62,6 +65,7 @@ func newTenantHandler(tenant tenant.Interface, opTenantGroup optenant.OpTenantOp
 		im:              im,
 		tenant:          tenant,
 		meteringOptions: meteringOptions,
+		am:              am,
 	}
 }
 
@@ -97,6 +101,12 @@ func (h *tenantHandler) ListWorkspaces(req *restful.Request, resp *restful.Respo
 	}
 
 	result, err := h.tenant.ListWorkspaces(user, queryParam)
+	//查询所有企业空间管理员角色绑定
+	workspaceRoleBindings, err := h.am.ListWorkspaceRoleBindingsWithAdmin()
+	if err != nil {
+		api.HandleInternalError(resp, nil, err)
+		return
+	}
 
 	for i, item := range result.Items {
 		workspace := item.(*tenantv1alpha2.WorkspaceTemplate)
@@ -113,6 +123,14 @@ func (h *tenantHandler) ListWorkspaces(req *restful.Request, resp *restful.Respo
 				workspace.Spec.OpTenantName = tenantName
 			}
 		}
+		workspaces := make([]string, 0)
+		for _, roleBinding := range workspaceRoleBindings {
+			if strings.HasPrefix(roleBinding.RoleRef.Name, workspace.Name) {
+				workspaces = append(workspaces, roleBinding.Subjects[0].Name)
+			}
+		}
+		str := strings.Replace(strings.Trim(fmt.Sprint(workspaces), "[]"), " ", ",", -1)
+		workspace.Spec.Manager = str
 		result.Items[i] = workspace
 	}
 	if err != nil {
