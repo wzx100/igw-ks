@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	gitVersion   = "v0.0.0"
+	gitVersion   = "v3.2.1"
 	gitCommit    = "unknown"
 	gitTreeState = "unknown"
 	buildDate    = "unknown"
