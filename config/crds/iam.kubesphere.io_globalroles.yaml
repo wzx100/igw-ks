@@ -83,6 +83,19 @@ spec:
               - verbs
               type: object
             type: array
+          spec:
+            properties:
+              IsDefault:
+                type: string
+              creator:
+                type: string
+              extendFrom:
+                description: 继承角色名
+                type: string
+              optenantid:
+                description: Unique email address(https://www.ietf.org/rfc/rfc5322.txt).
+                type: string
+            type: object
         type: object
     served: true
     storage: true

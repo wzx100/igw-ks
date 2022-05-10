@@ -162,9 +162,24 @@ func (g githubIdentity) GetUserID() string {
 func (g githubIdentity) GetUsername() string {
 	return g.Login
 }
+func (o githubIdentity) GetDeptid() string {
+	return ""
+}
+func (o githubIdentity) GetCustomerId() string {
+	return ""
+}
+func (o githubIdentity) GetTenantId() string {
+	return ""
+}
+func (o githubIdentity) GetOpAccessToken() string {
+	return ""
+}
 
 func (g githubIdentity) GetEmail() string {
 	return g.Email
+}
+func (g githubIdentity) GetOpuid() string {
+	return ""
 }
 
 func (g *github) IdentityExchangeCallback(req *http.Request) (identityprovider.Identity, error) {

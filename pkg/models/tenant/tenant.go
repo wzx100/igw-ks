@@ -21,8 +21,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	iamv1alpha2 "kubesphere.io/api/iam/v1alpha2"
+	optenantv1alpha1 "kubesphere.io/api/optenant/v1alpha1"
+	resourcesv1alpha1 "kubesphere.io/kubesphere/pkg/models/resources/v1alpha1/resource"
+
 	"strings"
 	"time"
+
+	"kubesphere.io/kubesphere/pkg/models/openpitrix"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -56,7 +62,6 @@ import (
 	"kubesphere.io/kubesphere/pkg/models/logging"
 	"kubesphere.io/kubesphere/pkg/models/metering"
 	"kubesphere.io/kubesphere/pkg/models/monitoring"
-	"kubesphere.io/kubesphere/pkg/models/openpitrix"
 	resources "kubesphere.io/kubesphere/pkg/models/resources/v1alpha3"
 	resourcesv1alpha3 "kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/resource"
 	resourcev1alpha3 "kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/resource"
@@ -71,17 +76,16 @@ import (
 const orphanFinalizer = "orphan.finalizers.kubesphere.io"
 
 type Interface interface {
-	ListWorkspaces(user user.Info, queryParam *query.Query) (*api.ListResult, error)
-	ListWorkspaceTemplates(user user.Info, query *query.Query) (*api.ListResult, error)
-	CreateWorkspaceTemplate(workspace *tenantv1alpha2.WorkspaceTemplate) (*tenantv1alpha2.WorkspaceTemplate, error)
-	DeleteWorkspaceTemplate(workspace string, opts metav1.DeleteOptions) error
-	UpdateWorkspaceTemplate(workspace *tenantv1alpha2.WorkspaceTemplate) (*tenantv1alpha2.WorkspaceTemplate, error)
-	PatchWorkspaceTemplate(workspace string, data json.RawMessage) (*tenantv1alpha2.WorkspaceTemplate, error)
-	DescribeWorkspaceTemplate(workspace string) (*tenantv1alpha2.WorkspaceTemplate, error)
+	ListWorkspacesAll(query *query.Query) (*api.ListResult, error)
+	ListWorkspaces(user user.Info, query *query.Query) (*api.ListResult, error)
 	ListNamespaces(user user.Info, workspace string, query *query.Query) (*api.ListResult, error)
 	ListDevOpsProjects(user user.Info, workspace string, query *query.Query) (*api.ListResult, error)
 	ListFederatedNamespaces(info user.Info, workspace string, param *query.Query) (*api.ListResult, error)
 	CreateNamespace(workspace string, namespace *corev1.Namespace) (*corev1.Namespace, error)
+	CreateWorkspace(workspace *tenantv1alpha2.WorkspaceTemplate) (*tenantv1alpha2.WorkspaceTemplate, error)
+	DeleteWorkspace(workspace string, opts metav1.DeleteOptions) error
+	UpdateWorkspace(workspace *tenantv1alpha2.WorkspaceTemplate) (*tenantv1alpha2.WorkspaceTemplate, error)
+	DescribeWorkspace(workspace string) (*tenantv1alpha2.WorkspaceTemplate, error)
 	ListWorkspaceClusters(workspace string) (*api.ListResult, error)
 	Events(user user.Info, queryParam *eventsv1alpha1.Query) (*eventsv1alpha1.APIResponse, error)
 	QueryLogs(user user.Info, query *loggingv1alpha2.Query) (*loggingv1alpha2.APIResponse, error)
@@ -91,6 +95,7 @@ type Interface interface {
 	DeleteNamespace(workspace, namespace string) error
 	UpdateNamespace(workspace string, namespace *corev1.Namespace) (*corev1.Namespace, error)
 	PatchNamespace(workspace string, namespace *corev1.Namespace) (*corev1.Namespace, error)
+	PatchWorkspace(workspace string, data json.RawMessage) (*tenantv1alpha2.WorkspaceTemplate, error)
 	ListClusters(info user.Info) (*api.ListResult, error)
 	Metering(user user.Info, queryParam *meteringv1alpha1.Query, priceInfo meteringclient.PriceInfo) (monitoring.Metrics, error)
 	MeteringHierarchy(user user.Info, queryParam *meteringv1alpha1.Query, priceInfo meteringclient.PriceInfo) (metering.ResourceStatistic, error)
@@ -101,6 +106,7 @@ type Interface interface {
 }
 
 type tenantOperator struct {
+	optenantGetter resourcesv1alpha1.ResourceGetter
 	am             am.AccessManagementInterface
 	authorizer     authorizer.Authorizer
 	k8sclient      kubernetes.Interface
@@ -113,13 +119,14 @@ type tenantOperator struct {
 	opRelease      openpitrix.ReleaseInterface
 }
 
-func New(informers informers.InformerFactory, k8sclient kubernetes.Interface, ksclient kubesphere.Interface, evtsClient eventsclient.Client, loggingClient loggingclient.Client, auditingclient auditingclient.Client, am am.AccessManagementInterface, authorizer authorizer.Authorizer, monitoringclient monitoringclient.Interface, resourceGetter *resourcev1alpha3.ResourceGetter, stopCh <-chan struct{}) Interface {
+func New(optenantGetter resourcesv1alpha1.ResourceGetter, informers informers.InformerFactory, k8sclient kubernetes.Interface, ksclient kubesphere.Interface, evtsClient eventsclient.Client, loggingClient loggingclient.Client, auditingclient auditingclient.Client, am am.AccessManagementInterface, authorizer authorizer.Authorizer, monitoringclient monitoringclient.Interface, resourceGetter *resourcev1alpha3.ResourceGetter) Interface {
 	var openpitrixRelease openpitrix.ReleaseInterface
 	if ksclient != nil {
-		openpitrixRelease = openpitrix.NewOpenpitrixOperator(informers, ksclient, nil, stopCh)
+		openpitrixRelease = openpitrix.NewOpenpitrixOperator(informers, ksclient, nil)
 	}
 
 	return &tenantOperator{
+		optenantGetter: optenantGetter,
 		am:             am,
 		authorizer:     authorizer,
 		resourceGetter: resourcesv1alpha3.NewResourceGetter(informers, nil),
@@ -132,71 +139,15 @@ func New(informers informers.InformerFactory, k8sclient kubernetes.Interface, ks
 		opRelease:      openpitrixRelease,
 	}
 }
-
-func (t *tenantOperator) ListWorkspaces(user user.Info, queryParam *query.Query) (*api.ListResult, error) {
-	listWS := authorizer.AttributesRecord{
-		User:            user,
-		Verb:            "list",
-		APIGroup:        "*",
-		Resource:        "workspaces",
-		ResourceRequest: true,
-		ResourceScope:   request.GlobalScope,
-	}
-
-	decision, _, err := t.authorizer.Authorize(listWS)
+func (t *tenantOperator) ListWorkspacesAll(queryParam *query.Query) (*api.ListResult, error) {
+	result, err := t.resourceGetter.List(tenantv1alpha2.ResourcePluralWorkspaceTemplate, "", queryParam)
 	if err != nil {
 		klog.Error(err)
 		return nil, err
 	}
-
-	// allowed to list all workspaces
-	if decision == authorizer.DecisionAllow {
-		result, err := t.resourceGetter.List(tenantv1alpha1.ResourcePluralWorkspace, "", queryParam)
-		if err != nil {
-			klog.Error(err)
-			return nil, err
-		}
-		return result, nil
-	}
-
-	// retrieving associated resources through role binding
-	workspaceRoleBindings, err := t.am.ListWorkspaceRoleBindings(user.GetName(), user.GetGroups(), "")
-	if err != nil {
-		klog.Error(err)
-		return nil, err
-	}
-
-	workspaces := make([]runtime.Object, 0)
-	for _, roleBinding := range workspaceRoleBindings {
-		workspaceName := roleBinding.Labels[tenantv1alpha1.WorkspaceLabel]
-		obj, err := t.resourceGetter.Get(tenantv1alpha1.ResourcePluralWorkspace, "", workspaceName)
-		if errors.IsNotFound(err) {
-			klog.Warningf("workspace role binding: %+v found but workspace not exist", roleBinding.Name)
-			continue
-		}
-		if err != nil {
-			klog.Error(err)
-			return nil, err
-		}
-		workspace := obj.(*tenantv1alpha1.Workspace)
-		// label matching selector, remove duplicate entity
-		if queryParam.Selector().Matches(labels.Set(workspace.Labels)) &&
-			!contains(workspaces, workspace) {
-			workspaces = append(workspaces, workspace)
-		}
-	}
-
-	// use default pagination search logic
-	result := resources.DefaultList(workspaces, queryParam, func(left runtime.Object, right runtime.Object, field query.Field) bool {
-		return resources.DefaultObjectMetaCompare(left.(*tenantv1alpha1.Workspace).ObjectMeta, right.(*tenantv1alpha1.Workspace).ObjectMeta, field)
-	}, func(workspace runtime.Object, filter query.Filter) bool {
-		return resources.DefaultObjectMetaFilter(workspace.(*tenantv1alpha1.Workspace).ObjectMeta, filter)
-	})
-
 	return result, nil
 }
-
-func (t *tenantOperator) ListWorkspaceTemplates(user user.Info, queryParam *query.Query) (*api.ListResult, error) {
+func (t *tenantOperator) ListWorkspaces(user user.Info, queryParam *query.Query) (*api.ListResult, error) {
 
 	listWS := authorizer.AttributesRecord{
 		User:            user,
@@ -215,6 +166,67 @@ func (t *tenantOperator) ListWorkspaceTemplates(user user.Info, queryParam *quer
 
 	// allowed to list all workspaces
 	if decision == authorizer.DecisionAllow {
+		if user.GetName() != "" {
+			loginuserGlobalRole, _ := t.am.GetGlobalRoleOfUser(user.GetName())
+			//如果是企业空间管理员,则查询绑定的企业空间
+			if loginuserGlobalRole != nil && loginuserGlobalRole.Name == "workspaces-manager" || loginuserGlobalRole.Spec.ExtendFrom == "workspaces-manager" {
+				workspaceRoleBindings, err := t.am.ListWorkspaceRoleBindings(user.GetName(), user.GetGroups(), "")
+				if err != nil {
+					klog.Error(err)
+					return nil, err
+				}
+
+				workspaces := make([]runtime.Object, 0)
+				for _, roleBinding := range workspaceRoleBindings {
+					workspaceName := roleBinding.Labels[tenantv1alpha1.WorkspaceLabel]
+					obj, err := t.resourceGetter.Get(tenantv1alpha2.ResourcePluralWorkspaceTemplate, "", workspaceName)
+					if errors.IsNotFound(err) {
+						klog.Warningf("workspace role binding: %+v found but workspace not exist", roleBinding.Name)
+						continue
+					}
+					if err != nil {
+						klog.Error(err)
+						return nil, err
+					}
+					workspace := obj.(*tenantv1alpha2.WorkspaceTemplate)
+
+					optenant, err := t.optenantGetter.Get("optenants", "", workspace.Spec.OpTenantId)
+					if err != nil {
+						return nil, err
+					}
+					ns := optenant.(*optenantv1alpha1.OpTenant)
+					value1 := queryParam.Filters["workspacename"]
+					if string(value1) != "" {
+						strVal := string(value1)
+						if !strings.Contains(workspace.ObjectMeta.Name, strVal) {
+							continue
+						}
+					}
+
+					value2 := queryParam.Filters["tenantname"]
+					if string(value2) != "" {
+						strVal := string(value2)
+						if !strings.Contains(ns.Spec.TenantName, strVal) {
+							continue
+						}
+					}
+
+					// label matching selector, remove duplicate entity
+					if queryParam.Selector().Matches(labels.Set(workspace.Labels)) &&
+						!contains(workspaces, workspace) {
+						workspaces = append(workspaces, workspace)
+					}
+				}
+
+				// use default pagination search logic
+				result := resources.DefaultList(workspaces, queryParam, func(left runtime.Object, right runtime.Object, field query.Field) bool {
+					return resources.DefaultObjectMetaCompare(left.(*tenantv1alpha2.WorkspaceTemplate).ObjectMeta, right.(*tenantv1alpha2.WorkspaceTemplate).ObjectMeta, field)
+				}, DefaultObjectFilter)
+
+				return result, nil
+			}
+		}
+
 		result, err := t.resourceGetter.List(tenantv1alpha2.ResourcePluralWorkspaceTemplate, "", queryParam)
 		if err != nil {
 			klog.Error(err)
@@ -222,7 +234,7 @@ func (t *tenantOperator) ListWorkspaceTemplates(user user.Info, queryParam *quer
 		}
 		return result, nil
 	}
-
+	delete(queryParam.Filters, "loginusername")
 	// retrieving associated resources through role binding
 	workspaceRoleBindings, err := t.am.ListWorkspaceRoleBindings(user.GetName(), user.GetGroups(), "")
 	if err != nil {
@@ -243,6 +255,28 @@ func (t *tenantOperator) ListWorkspaceTemplates(user user.Info, queryParam *quer
 			return nil, err
 		}
 		workspace := obj.(*tenantv1alpha2.WorkspaceTemplate)
+
+		optenant, err := t.optenantGetter.Get("optenants", "", workspace.Spec.OpTenantId)
+		if err != nil {
+			return nil, err
+		}
+		ns := optenant.(*optenantv1alpha1.OpTenant)
+		value1 := queryParam.Filters["workspacename"]
+		if string(value1) != "" {
+			strVal := string(value1)
+			if !strings.Contains(workspace.ObjectMeta.Name, strVal) {
+				continue
+			}
+		}
+
+		value2 := queryParam.Filters["tenantname"]
+		if string(value2) != "" {
+			strVal := string(value2)
+			if !strings.Contains(ns.Spec.TenantName, strVal) {
+				continue
+			}
+		}
+
 		// label matching selector, remove duplicate entity
 		if queryParam.Selector().Matches(labels.Set(workspace.Labels)) &&
 			!contains(workspaces, workspace) {
@@ -253,11 +287,92 @@ func (t *tenantOperator) ListWorkspaceTemplates(user user.Info, queryParam *quer
 	// use default pagination search logic
 	result := resources.DefaultList(workspaces, queryParam, func(left runtime.Object, right runtime.Object, field query.Field) bool {
 		return resources.DefaultObjectMetaCompare(left.(*tenantv1alpha2.WorkspaceTemplate).ObjectMeta, right.(*tenantv1alpha2.WorkspaceTemplate).ObjectMeta, field)
-	}, func(workspace runtime.Object, filter query.Filter) bool {
-		return resources.DefaultObjectMetaFilter(workspace.(*tenantv1alpha2.WorkspaceTemplate).ObjectMeta, filter)
-	})
+	}, DefaultObjectFilter)
 
 	return result, nil
+}
+
+//  Default metadata filter
+//func DefaultObjectFilter(workSpaceTemplate tenantv1alpha2.WorkspaceTemplate, filter query.Filter) bool {
+func DefaultObjectFilter(object runtime.Object, filter query.Filter) bool {
+	workspace, ok := object.(*tenantv1alpha2.WorkspaceTemplate)
+	if !ok {
+		return false
+	}
+
+	switch filter.Field {
+	case query.FieldNames:
+		for _, name := range strings.Split(string(filter.Value), ",") {
+			if workspace.ObjectMeta.Name == name {
+				return true
+			}
+		}
+		return false
+	// /namespaces?page=1&limit=10&name=default
+
+	case iamv1alpha2.FieldOptenantId:
+		return workspace.Spec.OpTenantId == string(filter.Value)
+	case query.FieldName:
+		return strings.Contains(workspace.ObjectMeta.Name, string(filter.Value))
+		// /namespaces?page=1&limit=10&uid=a8a8d6cf-f6a5-4fea-9c1b-e57610115706
+	case query.FieldUID:
+		return strings.Compare(string(workspace.ObjectMeta.UID), string(filter.Value)) == 0
+		// /deployments?page=1&limit=10&namespace=kubesphere-system
+	case query.FieldNamespace:
+		return strings.Compare(workspace.ObjectMeta.Namespace, string(filter.Value)) == 0
+		// /namespaces?page=1&limit=10&ownerReference=a8a8d6cf-f6a5-4fea-9c1b-e57610115706
+	case query.FieldOwnerReference:
+		for _, ownerReference := range workspace.ObjectMeta.OwnerReferences {
+			if strings.Compare(string(ownerReference.UID), string(filter.Value)) == 0 {
+				return true
+			}
+		}
+		return false
+		// /namespaces?page=1&limit=10&ownerKind=Workspace
+	case query.FieldOwnerKind:
+		for _, ownerReference := range workspace.ObjectMeta.OwnerReferences {
+			if strings.Compare(ownerReference.Kind, string(filter.Value)) == 0 {
+				return true
+			}
+		}
+		return false
+		// /namespaces?page=1&limit=10&annotation=openpitrix_runtime
+	case query.FieldAnnotation:
+		return labelMatch(workspace.ObjectMeta.Annotations, string(filter.Value))
+		// /namespaces?page=1&limit=10&label=kubesphere.io/workspace:system-workspace
+	case query.FieldLabel:
+		return labelMatch(workspace.ObjectMeta.Labels, string(filter.Value))
+	default:
+		return false
+	}
+}
+func labelMatch(labels map[string]string, filter string) bool {
+	fields := strings.SplitN(filter, "=", 2)
+	var key, value string
+	var opposite bool
+	if len(fields) == 2 {
+		key = fields[0]
+		if strings.HasSuffix(key, "!") {
+			key = strings.TrimSuffix(key, "!")
+			opposite = true
+		}
+		value = fields[1]
+	} else {
+		key = fields[0]
+		value = "*"
+	}
+	for k, v := range labels {
+		if opposite {
+			if (k == key) && v != value {
+				return true
+			}
+		} else {
+			if (k == key) && (value == "*" || v == value) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (t *tenantOperator) ListFederatedNamespaces(user user.Info, workspace string, queryParam *query.Query) (*api.ListResult, error) {
@@ -459,19 +574,19 @@ func (t *tenantOperator) PatchNamespace(workspace string, namespace *corev1.Name
 	return t.k8sclient.CoreV1().Namespaces().Patch(context.Background(), namespace.Name, types.MergePatchType, data, metav1.PatchOptions{})
 }
 
-func (t *tenantOperator) PatchWorkspaceTemplate(workspace string, data json.RawMessage) (*tenantv1alpha2.WorkspaceTemplate, error) {
+func (t *tenantOperator) PatchWorkspace(workspace string, data json.RawMessage) (*tenantv1alpha2.WorkspaceTemplate, error) {
 	return t.ksclient.TenantV1alpha2().WorkspaceTemplates().Patch(context.Background(), workspace, types.MergePatchType, data, metav1.PatchOptions{})
 }
 
-func (t *tenantOperator) CreateWorkspaceTemplate(workspace *tenantv1alpha2.WorkspaceTemplate) (*tenantv1alpha2.WorkspaceTemplate, error) {
+func (t *tenantOperator) CreateWorkspace(workspace *tenantv1alpha2.WorkspaceTemplate) (*tenantv1alpha2.WorkspaceTemplate, error) {
 	return t.ksclient.TenantV1alpha2().WorkspaceTemplates().Create(context.Background(), workspace, metav1.CreateOptions{})
 }
 
-func (t *tenantOperator) UpdateWorkspaceTemplate(workspace *tenantv1alpha2.WorkspaceTemplate) (*tenantv1alpha2.WorkspaceTemplate, error) {
+func (t *tenantOperator) UpdateWorkspace(workspace *tenantv1alpha2.WorkspaceTemplate) (*tenantv1alpha2.WorkspaceTemplate, error) {
 	return t.ksclient.TenantV1alpha2().WorkspaceTemplates().Update(context.Background(), workspace, metav1.UpdateOptions{})
 }
 
-func (t *tenantOperator) DescribeWorkspaceTemplate(workspace string) (*tenantv1alpha2.WorkspaceTemplate, error) {
+func (t *tenantOperator) DescribeWorkspace(workspace string) (*tenantv1alpha2.WorkspaceTemplate, error) {
 	obj, err := t.resourceGetter.Get(tenantv1alpha2.ResourcePluralWorkspaceTemplate, "", workspace)
 	if err != nil {
 		klog.Error(err)
@@ -479,9 +594,8 @@ func (t *tenantOperator) DescribeWorkspaceTemplate(workspace string) (*tenantv1a
 	}
 	return obj.(*tenantv1alpha2.WorkspaceTemplate), nil
 }
-
 func (t *tenantOperator) ListWorkspaceClusters(workspaceName string) (*api.ListResult, error) {
-	workspace, err := t.DescribeWorkspaceTemplate(workspaceName)
+	workspace, err := t.DescribeWorkspace(workspaceName)
 	if err != nil {
 		klog.Error(err)
 		return nil, err
@@ -521,7 +635,6 @@ func (t *tenantOperator) ListWorkspaceClusters(workspaceName string) (*api.ListR
 	// In this case, you can either set spec: {} as above or remove spec field from your placement policy. The resource will not be propagated to member clusters.
 	return &api.ListResult{Items: []interface{}{}, TotalItems: 0}, nil
 }
-
 func (t *tenantOperator) ListClusters(user user.Info) (*api.ListResult, error) {
 
 	listClustersInGlobalScope := authorizer.AttributesRecord{
@@ -575,7 +688,7 @@ func (t *tenantOperator) ListClusters(user user.Info) (*api.ListResult, error) {
 
 	for _, roleBinding := range workspaceRoleBindings {
 		workspaceName := roleBinding.Labels[tenantv1alpha1.WorkspaceLabel]
-		workspace, err := t.DescribeWorkspaceTemplate(workspaceName)
+		workspace, err := t.DescribeWorkspace(workspaceName)
 		if err != nil {
 			klog.Error(err)
 			return nil, err
@@ -607,10 +720,10 @@ func (t *tenantOperator) ListClusters(user user.Info) (*api.ListResult, error) {
 	return &api.ListResult{Items: items, TotalItems: len(items)}, nil
 }
 
-func (t *tenantOperator) DeleteWorkspaceTemplate(workspace string, opts metav1.DeleteOptions) error {
+func (t *tenantOperator) DeleteWorkspace(workspace string, opts metav1.DeleteOptions) error {
 
 	if opts.PropagationPolicy != nil && *opts.PropagationPolicy == metav1.DeletePropagationOrphan {
-		wsp, err := t.DescribeWorkspaceTemplate(workspace)
+		wsp, err := t.DescribeWorkspace(workspace)
 		if err != nil {
 			klog.Error(err)
 			return err

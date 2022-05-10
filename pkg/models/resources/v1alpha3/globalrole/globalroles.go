@@ -18,6 +18,7 @@ package globalrole
 
 import (
 	"encoding/json"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -45,6 +46,14 @@ func (d *globalrolesGetter) Get(_, name string) (runtime.Object, error) {
 
 func (d *globalrolesGetter) List(_ string, query *query.Query) (*api.ListResult, error) {
 
+	opTenantName := query.Filters["opTenantName"]
+	if string(opTenantName) != "" {
+		delete(query.Filters, "opTenantName")
+	}
+	loginuser := query.Filters["loginuser"]
+	if string(loginuser) != "" {
+		delete(query.Filters, "loginuser")
+	}
 	var roles []*iamv1alpha2.GlobalRole
 	var err error
 
@@ -58,13 +67,74 @@ func (d *globalrolesGetter) List(_ string, query *query.Query) (*api.ListResult,
 	if err != nil {
 		return nil, err
 	}
+	globalRoleName := ""
+	if string(loginuser) != "" {
+		loginUserName := string(loginuser)
+		//查询登录用户角色绑定
+		globalRoleBindings, _ := d.sharedInformers.Iam().V1alpha2().GlobalRoleBindings().Lister().List(query.Selector())
+		for _, globalRoleBinding := range globalRoleBindings {
+			if globalRoleBinding.Subjects[0].Name == loginUserName {
+				globalrole, _ := d.sharedInformers.Iam().V1alpha2().GlobalRoles().Lister().Get(globalRoleBinding.RoleRef.Name)
+				if globalrole.Spec.ExtendFrom != "" {
+					globalRoleName = globalrole.Spec.ExtendFrom
+				} else {
+					globalRoleName = globalrole.Name
+				}
+			}
+		}
+	}
+	value := query.Filters["managerUser"]
+	delete(query.Filters, "managerUser")
 
 	var result []runtime.Object
 	for _, role := range roles {
+		if string(opTenantName) != "" {
+			if role.Spec.OpTenantId != "" {
+				optenant, err := d.sharedInformers.OpTenant().V1alpha1().OpTenants().Lister().Get(role.Spec.OpTenantId)
+				if err != nil {
+					return nil, err
+				}
+				if optenant != nil {
+					if !strings.Contains(optenant.Spec.TenantName, string(opTenantName)) {
+						continue
+					}
+				}
+			} else {
+				continue
+			}
+		}
+		if globalRoleName != "" {
+			//属于新建和编辑用户,需要根据登录用户角色来判断
+			if globalRoleName == "platform-admin" {
+				//新建和编辑用户
+				if stringValue := string(value); stringValue != "" {
+					//不是企业空间管理员和普通用户的
+					if role.Spec.ExtendFrom != "platform-regular" && role.Name != "platform-regular" && role.Spec.ExtendFrom != "workspaces-manager" && role.Name != "workspaces-manager" {
+						continue
+					}
+				}
+			} else if globalRoleName == "tenant-admin" {
+				//不是企业空间管理员和普通用户的
+				if role.Spec.ExtendFrom != "platform-regular" && role.Name != "platform-regular" && role.Spec.ExtendFrom != "workspaces-manager" && role.Name != "workspaces-manager" {
+					continue
+				}
+			} else if globalRoleName == "workspaces-manager" {
+				if role.Spec.Creator != "" && role.Spec.Creator != string(loginuser) {
+					continue
+				}
+				//不是普通用户和继承自普通用户的
+				if role.Spec.ExtendFrom != "platform-regular" && role.Name != "platform-regular" {
+					continue
+				}
+			} else {
+				continue
+			}
+		}
 		result = append(result, role)
 	}
+	apiresult, err := v1alpha3.DefaultList(result, query, d.compare, d.filter), nil
 
-	return v1alpha3.DefaultList(result, query, d.compare, d.filter), nil
+	return apiresult, err
 }
 
 func (d *globalrolesGetter) compare(left runtime.Object, right runtime.Object, field query.Field) bool {
@@ -89,7 +159,86 @@ func (d *globalrolesGetter) filter(object runtime.Object, filter query.Filter) b
 		return false
 	}
 
-	return v1alpha3.DefaultObjectMetaFilter(role.ObjectMeta, filter)
+	return DefaultObjectFilter(role, filter)
+}
+
+//  Default metadata filter
+func DefaultObjectFilter(item *iamv1alpha2.GlobalRole, filter query.Filter) bool {
+	switch filter.Field {
+	case iamv1alpha2.FieldIsDefault:
+		return item.Spec.IsDefault == string(filter.Value)
+	case iamv1alpha2.FieldOptenantId:
+		return item.Spec.OpTenantId == string(filter.Value) || item.Spec.OpTenantId == ""
+	case query.FieldNames:
+		for _, name := range strings.Split(string(filter.Value), ",") {
+			if item.Name == name {
+				return true
+			}
+		}
+		return false
+	// /namespaces?page=1&limit=10&name=default
+	case query.FieldName:
+		return strings.Contains(item.Name, string(filter.Value))
+		// /namespaces?page=1&limit=10&uid=a8a8d6cf-f6a5-4fea-9c1b-e57610115706
+	case query.FieldUID:
+		return strings.Compare(string(item.UID), string(filter.Value)) == 0
+		// /deployments?page=1&limit=10&namespace=kubesphere-system
+	case query.FieldNamespace:
+		return strings.Compare(item.Namespace, string(filter.Value)) == 0
+		// /namespaces?page=1&limit=10&ownerReference=a8a8d6cf-f6a5-4fea-9c1b-e57610115706
+	case query.FieldOwnerReference:
+		for _, ownerReference := range item.OwnerReferences {
+			if strings.Compare(string(ownerReference.UID), string(filter.Value)) == 0 {
+				return true
+			}
+		}
+		return false
+		// /namespaces?page=1&limit=10&ownerKind=Workspace
+	case query.FieldOwnerKind:
+		for _, ownerReference := range item.OwnerReferences {
+			if strings.Compare(ownerReference.Kind, string(filter.Value)) == 0 {
+				return true
+			}
+		}
+		return false
+		// /namespaces?page=1&limit=10&annotation=openpitrix_runtime
+	case query.FieldAnnotation:
+		return labelMatch(item.Annotations, string(filter.Value))
+		// /namespaces?page=1&limit=10&label=kubesphere.io/workspace:system-workspace
+	case query.FieldLabel:
+		return labelMatch(item.Labels, string(filter.Value))
+	default:
+		return false
+	}
+}
+
+func labelMatch(labels map[string]string, filter string) bool {
+	fields := strings.SplitN(filter, "=", 2)
+	var key, value string
+	var opposite bool
+	if len(fields) == 2 {
+		key = fields[0]
+		if strings.HasSuffix(key, "!") {
+			key = strings.TrimSuffix(key, "!")
+			opposite = true
+		}
+		value = fields[1]
+	} else {
+		key = fields[0]
+		value = "*"
+	}
+	for k, v := range labels {
+		if opposite {
+			if (k == key) && v != value {
+				return true
+			}
+		} else {
+			if (k == key) && (value == "*" || v == value) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (d *globalrolesGetter) fetchAggregationRoles(name string) ([]*iamv1alpha2.GlobalRole, error) {

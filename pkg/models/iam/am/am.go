@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"kubesphere.io/kubesphere/pkg/simple/client/devops"
 
@@ -63,6 +64,7 @@ type AccessManagementInterface interface {
 	ListGlobalRoleBindings(username string) ([]*iamv1alpha2.GlobalRoleBinding, error)
 	ListClusterRoleBindings(username string) ([]*rbacv1.ClusterRoleBinding, error)
 	ListWorkspaceRoleBindings(username string, groups []string, workspace string) ([]*iamv1alpha2.WorkspaceRoleBinding, error)
+	ListWorkspaceRoleBindingsWithAdmin() ([]*iamv1alpha2.WorkspaceRoleBinding, error)
 	ListRoleBindings(username string, groups []string, namespace string) ([]*rbacv1.RoleBinding, error)
 	GetRoleReferenceRules(roleRef rbacv1.RoleRef, namespace string) (string, []rbacv1.PolicyRule, error)
 	GetGlobalRole(globalRole string) (*iamv1alpha2.GlobalRole, error)
@@ -287,6 +289,23 @@ func (am *amOperator) ListWorkspaceRoleBindings(username string, groups []string
 		}
 	}
 
+	return result, nil
+}
+
+func (am *amOperator) ListWorkspaceRoleBindingsWithAdmin() ([]*iamv1alpha2.WorkspaceRoleBinding, error) {
+	roleBindings, err := am.workspaceRoleBindingGetter.List("", query.New())
+
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*iamv1alpha2.WorkspaceRoleBinding, 0)
+	for _, obj := range roleBindings.Items {
+		roleBinding := obj.(*iamv1alpha2.WorkspaceRoleBinding)
+		//是企业空间管理员
+		if strings.HasSuffix(roleBinding.RoleRef.Name, "-admin") {
+			result = append(result, roleBinding)
+		}
+	}
 	return result, nil
 }
 

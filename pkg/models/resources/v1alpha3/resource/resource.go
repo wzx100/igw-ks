@@ -18,7 +18,6 @@ package resource
 
 import (
 	"errors"
-
 	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/volumesnapshotcontent"
 
 	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/volumesnapshotclass"

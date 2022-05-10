@@ -17,7 +17,7 @@ WORKDIR /tmp
 RUN apk add --no-cache ca-certificates
 
 # install helm
-#ADD https://get.helm.sh/helm-${HELM_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz /tmp
+#ADD http://repo.huaweicloud.com/helm/v3.5.2/helm-v3.5.2-linux-arm64.tar.gz /tmp
 RUN wget https://repo.huaweicloud.com/helm/v3.5.2/helm-v3.5.2-linux-amd64.tar.gz -O /tmp/helm-v3.5.2-linux-amd64.tar.gz
 RUN tar xvzf /tmp/helm-${HELM_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz -C /tmp
 RUN mv /tmp/${TARGETOS}-${TARGETARCH}/helm ${OUTDIR}/usr/local/bin/
@@ -33,6 +33,7 @@ ADD . /workspace/
 
 RUN make ks-apiserver
 RUN mv /workspace/bin/cmd/ks-apiserver ${OUTDIR}/usr/local/bin/
+
 
 ##############
 # Final image

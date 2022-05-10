@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha2
 
 import (
+	"kubesphere.io/kubesphere/pkg/models/optenant"
 	"net/http"
 
 	"kubesphere.io/kubesphere/pkg/apiserver/authorization/authorizer"
@@ -44,9 +45,9 @@ const (
 
 var GroupVersion = schema.GroupVersion{Group: GroupName, Version: "v1alpha2"}
 
-func AddToContainer(container *restful.Container, im im.IdentityManagementInterface, am am.AccessManagementInterface, group group.GroupOperator, authorizer authorizer.Authorizer) error {
+func AddToContainer(opTenantGroup optenant.OpTenantOperator, container *restful.Container, im im.IdentityManagementInterface, am am.AccessManagementInterface, group group.GroupOperator, authorizer authorizer.Authorizer) error {
 	ws := runtime.NewWebService(GroupVersion)
-	handler := newIAMHandler(im, am, group, authorizer)
+	handler := newIAMHandler(opTenantGroup, im, am, group, authorizer)
 
 	// users
 	ws.Route(ws.POST("/users").
@@ -55,6 +56,14 @@ func AddToContainer(container *restful.Container, im im.IdentityManagementInterf
 		Returns(http.StatusOK, api.StatusOK, iamv1alpha2.User{}).
 		Reads(iamv1alpha2.User{}).
 		Metadata(restfulspec.KeyOpenAPITags, []string{constants.UserTag}))
+
+	ws.Route(ws.PUT("/users/{user}/resetPassword").
+		To(handler.ResetPassword).
+		Doc("resetPassword the specified user.").
+		Param(ws.PathParameter("user", "username")).
+		Returns(http.StatusOK, api.StatusOK, errors.None).
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.UserTag}))
+
 	ws.Route(ws.DELETE("/users/{user}").
 		To(handler.DeleteUser).
 		Doc("Delete the specified user.").

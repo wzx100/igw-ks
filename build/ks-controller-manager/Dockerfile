@@ -20,14 +20,15 @@ WORKDIR /tmp
 RUN apk add --no-cache ca-certificates
 
 # Install helm
-#ADD https://get.helm.sh/helm-${HELM_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz /tmp
+#ADD http://repo.huaweicloud.com/helm/v3.5.2/helm-v3.5.2-linux-arm64.tar.gz /tmp
+
 RUN wget https://repo.huaweicloud.com/helm/v3.5.2/helm-v3.5.2-linux-amd64.tar.gz -O /tmp/helm-v3.5.2-linux-amd64.tar.gz
 RUN tar xvzf /tmp/helm-${HELM_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz -C /tmp
 RUN mv /tmp/${TARGETOS}-${TARGETARCH}/helm ${OUTDIR}/usr/local/bin/
 
 # install kustomize
 ADD https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_${TARGETOS}_${TARGETARCH}.tar.gz /tmp
-RUN tar xvzf /tmp/kustomize_${KUSTOMIZE_VERSION}_linux_${TARGETARCH}.tar.gz -C /tmp
+RUN tar xvzf /tmp/kustomize_${KUSTOMIZE_VERSION}_${TARGETOS}_${TARGETARCH}.tar.gz -C /tmp
 RUN mv /tmp/kustomize ${OUTDIR}/usr/local/bin/
 
 

@@ -54,8 +54,23 @@ func (c casIdentity) GetUserID() string {
 func (c casIdentity) GetUsername() string {
 	return c.User
 }
+func (o casIdentity) GetDeptid() string {
+	return ""
+}
+func (o casIdentity) GetCustomerId() string {
+	return ""
+}
+func (o casIdentity) GetTenantId() string {
+	return ""
+}
+func (o casIdentity) GetOpAccessToken() string {
+	return ""
+}
 
 func (c casIdentity) GetEmail() string {
+	return ""
+}
+func (c casIdentity) GetOpuid() string {
 	return ""
 }
 

@@ -17,20 +17,26 @@ limitations under the License.
 package v1alpha2
 
 import (
+	"bytes"
+	"crypto/tls"
+	"encoding/json"
 	"fmt"
-	"strings"
-
-	authuser "k8s.io/apiserver/pkg/authentication/user"
-
-	"kubesphere.io/kubesphere/pkg/apiserver/request"
+	"io/ioutil"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apiserver/pkg/endpoints/request"
+	iamv1alpha2 "kubesphere.io/api/iam/v1alpha2"
+	tenantv1alpha1 "kubesphere.io/api/tenant/v1alpha1"
 	"kubesphere.io/kubesphere/pkg/models/auth"
+	"kubesphere.io/kubesphere/pkg/models/optenant"
+	"net/http"
+	"strings"
+	"time"
 
 	"github.com/emicklei/go-restful"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	authuser "k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/klog"
-
-	iamv1alpha2 "kubesphere.io/api/iam/v1alpha2"
 
 	"kubesphere.io/kubesphere/pkg/api"
 	"kubesphere.io/kubesphere/pkg/apiserver/authorization/authorizer"
@@ -45,7 +51,60 @@ import (
 type Member struct {
 	Username string `json:"username"`
 	RoleRef  string `json:"roleRef"`
+	Operate  string `json:"operate"`
 }
+type UserCenterResp struct {
+	Code    string             `json:"code"`
+	Message string             `json:"msg"`
+	Data    UserCenterRespData `json:"data"`
+	Success bool               `json:"success"`
+}
+
+type UserCenterRespData struct {
+	MainId      string `json:"mainId"`
+	UserId      string `json:"userId"`
+	Sex         string `json:"sex"`
+	AccountName string `json:"accountName"`
+	UserName    string `json:"userName"`
+	Cellphone   string `json:"cellphone"`
+	IsAdmin     int8   `json:"isAdmin"`
+	Status      string `json:"Status"`
+	MainName    string `json:"mainName"`
+	//onepower中的id
+	OnepowerID string `json:"id"`
+	//租户ID
+	TenantId string `json:"tenantId"`
+}
+type userResp struct {
+	Code    string `json:"code"`
+	Message string `json:"msg"`
+	Data    string `json:"data"`
+	Success bool   `json:"success"`
+}
+
+//const ChangePasswordUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4/portalcustomer/v1.0.0/user-center/userinfo/self/pwd"
+//const ChangePasswordUrl = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo/self/pwd"
+const ChangePasswordUrl = "http://coreop.ftzq.internal.virtueit.net:81/v4-snapshot/portalcustomer/v1.0.0/user-center/userinfo/self/pwd"
+
+const logoutUrl = "http://coreop.ftzq.internal.virtueit.net:81/v3/gateway/auth/v1.0.0/oauth/logout"
+
+const finalizer = "finalizers.kubesphere.io/users"
+
+//const CreateUserUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4-snapshot/portalcustomer/v1.0.0/user-center/userinfo"
+const CreateUserUrl = "http://coreop.ftzq.internal.virtueit.net:81/v4-snapshot/portalcustomer/v1.0.0/user-center/userinfo"
+
+const DeleteUserUrl = "http://coreop.ftzq.internal.virtueit.net:81/v4-snapshot/portalcustomer/v1.0.0/user-center/userinfo/delete"
+
+//const DeleteUserUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4-snapshot/portalcustomer/v1.0.0/user-center/userinfo/delete"
+//const DeleteUserUrl = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo/delete"
+
+const ResetUserPassword = "http://coreop.ftzq.internal.virtueit.net:81/v4-snapshot/portalcustomer/v1.0.0/user-center/userinfo/resetpassword"
+
+//const ResetUserPassword = "http://induscore.ftzq.internal.virtueit.net:81/v4-snapshot/portalcustomer/v1.0.0/user-center/userinfo/resetpassword"
+//const ResetUserPassword = "http://coreop.ft.internal.virtueit.net/v4/portalcustomer/v1.0.0/user-center/userinfo/resetpassword"
+
+//const QueryUserInfoUrl = "http://induscore.ftzq.internal.virtueit.net:81/v4-snapshot/portalcustomer/v1.0.0/user-center/userinfo/details"
+const QueryUserInfoUrl = "http://coreop.ftzq.internal.virtueit.net:81/v4-snapshot/portalcustomer/v1.0.0/user-center/userinfo/details"
 
 type GroupMember struct {
 	UserName  string `json:"userName"`
@@ -58,18 +117,21 @@ type PasswordReset struct {
 }
 
 type iamHandler struct {
-	am         am.AccessManagementInterface
-	im         im.IdentityManagementInterface
-	group      group.GroupOperator
-	authorizer authorizer.Authorizer
+	am            am.AccessManagementInterface
+	im            im.IdentityManagementInterface
+	opTenantGroup optenant.OpTenantOperator
+	tokenOperator auth.TokenManagementInterface
+	group         group.GroupOperator
+	authorizer    authorizer.Authorizer
 }
 
-func newIAMHandler(im im.IdentityManagementInterface, am am.AccessManagementInterface, group group.GroupOperator, authorizer authorizer.Authorizer) *iamHandler {
+func newIAMHandler(opTenantGroup optenant.OpTenantOperator, im im.IdentityManagementInterface, am am.AccessManagementInterface, group group.GroupOperator, authorizer authorizer.Authorizer) *iamHandler {
 	return &iamHandler{
-		am:         am,
-		im:         im,
-		group:      group,
-		authorizer: authorizer,
+		opTenantGroup: opTenantGroup,
+		am:            am,
+		im:            im,
+		group:         group,
+		authorizer:    authorizer,
 	}
 }
 
@@ -92,6 +154,18 @@ func (h *iamHandler) DescribeUser(request *restful.Request, response *restful.Re
 		user = appendGlobalRoleAnnotation(user, globalRole.Name)
 	}
 
+	//查询用户所属租户名称
+	if user.Spec.OpTenantId != "" {
+		opTenant, err := h.opTenantGroup.DescribeOpTenant(user.Spec.OpTenantId)
+		if err != nil {
+			api.HandleInternalError(response, request, err)
+			return
+		}
+		if opTenant != nil {
+			tenantName := opTenant.Spec.TenantName
+			user.Spec.OpTenantName = tenantName
+		}
+	}
 	response.WriteEntity(user)
 }
 
@@ -261,6 +335,30 @@ func (h *iamHandler) RetrieveMemberRoleTemplates(request *restful.Request, respo
 
 func (h *iamHandler) ListUsers(request *restful.Request, response *restful.Response) {
 	queryParam := query.ParseQueryParameter(request)
+	operator, ok := apirequest.UserFrom(request.Request.Context())
+	if !ok {
+		err := errors.NewInternalError(fmt.Errorf("cannot obtain user info"))
+		api.HandleInternalError(response, request, err)
+		return
+	}
+	operatoruser, err := h.im.DescribeUser(operator.GetName())
+	if err != nil {
+		klog.Error("=========查询用户信息异常======", err.Error())
+		api.HandleInternalError(response, request, err)
+		return
+	}
+	if operatoruser == nil {
+		klog.Error("==========查询用户信息为空===========")
+		api.HandleError(response, request, fmt.Errorf("==========查询用户信息为空==========="))
+		return
+	}
+
+	if operatoruser.Spec.OpTenantId != "" {
+		queryParam.Filters["optenantid"] = query.Value(operatoruser.Spec.OpTenantId)
+	}
+	if operatoruser.Name != "" {
+		queryParam.Filters["loginusername"] = query.Value(operatoruser.Name)
+	}
 	result, err := h.im.ListUsers(queryParam)
 	if err != nil {
 		api.HandleInternalError(response, request, err)
@@ -278,9 +376,44 @@ func (h *iamHandler) ListUsers(request *restful.Request, response *restful.Respo
 		if globalRole != nil {
 			user = appendGlobalRoleAnnotation(user, globalRole.Name)
 		}
+		//查询用户所属租户名称
+		if user.Spec.OpTenantId != "" {
+			opTenant, err := h.opTenantGroup.DescribeOpTenant(user.Spec.OpTenantId)
+			if err != nil {
+				api.HandleInternalError(response, request, err)
+				return
+			}
+			if opTenant != nil {
+				tenantName := opTenant.Spec.TenantName
+				user.Spec.OpTenantName = tenantName
+			}
+		}
+		//
+		workspaceRoleBindings, err := h.am.ListWorkspaceRoleBindings(user.ObjectMeta.Name, nil, "")
+		workspaces := make([]string, 0)
+		for _, roleBinding := range workspaceRoleBindings {
+			workspaceName := roleBinding.Labels[tenantv1alpha1.WorkspaceLabel]
+
+			// label matching selector, remove duplicate entity
+			if !contains(workspaces, workspaceName) {
+				workspaces = append(workspaces, workspaceName)
+
+			}
+		}
+		str := strings.Replace(strings.Trim(fmt.Sprint(workspaces), "[]"), " ", ",", -1)
+		user.Spec.BelongWorkSpace = str
+
 		result.Items[i] = user
 	}
 	response.WriteEntity(result)
+}
+func contains(objects []string, workspaceName string) bool {
+	for _, item := range objects {
+		if item == workspaceName {
+			return true
+		}
+	}
+	return false
 }
 
 func appendGlobalRoleAnnotation(user *iamv1alpha2.User, globalRole string) *iamv1alpha2.User {
@@ -319,7 +452,48 @@ func (h *iamHandler) ListClusterRoles(request *restful.Request, response *restfu
 
 func (h *iamHandler) ListGlobalRoles(req *restful.Request, resp *restful.Response) {
 	queryParam := query.ParseQueryParameter(req)
+	operator, ok := apirequest.UserFrom(req.Request.Context())
+	if !ok {
+		err := errors.NewInternalError(fmt.Errorf("cannot obtain user info"))
+		api.HandleInternalError(resp, req, err)
+		return
+	}
+	operatoruser, err := h.im.DescribeUser(operator.GetName())
+	if err != nil {
+		klog.Error("=========查询用户信息异常======", err.Error())
+		api.HandleInternalError(resp, req, err)
+		return
+	}
+	if operatoruser == nil {
+		klog.Error("==========查询用户信息为空===========")
+		api.HandleError(resp, req, fmt.Errorf("==========查询用户信息为空==========="))
+		return
+	}
+	if operatoruser.Spec.OpTenantId != "" && string(queryParam.Filters["label"]) != "iam.kubesphere.io/role-template=true" {
+		queryParam.Filters["optenantid"] = query.Value(operatoruser.Spec.OpTenantId)
+		queryParam.Filters["loginuser"] = query.Value(operatoruser.Name)
+
+		//手动模拟一个
+		//queryParam.Filters["managerUser"] = query.Value(operatoruser.Name)
+
+	}
 	result, err := h.am.ListGlobalRoles(queryParam)
+
+	for _, item := range result.Items {
+		globalrole := item.(*iamv1alpha2.GlobalRole)
+
+		if globalrole.Spec.OpTenantId != "" {
+			opTenant, err := h.opTenantGroup.DescribeOpTenant(globalrole.Spec.OpTenantId)
+			if err != nil {
+				api.HandleInternalError(resp, req, err)
+				return
+			}
+			if opTenant != nil {
+				tenantName := opTenant.Spec.TenantName
+				globalrole.Spec.OpTenantName = tenantName
+			}
+		}
+	}
 	if err != nil {
 		api.HandleInternalError(resp, req, err)
 		return
@@ -491,6 +665,7 @@ func (h *iamHandler) DeleteWorkspaceRole(request *restful.Request, response *res
 func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 	var user iamv1alpha2.User
 	err := req.ReadEntity(&user)
+	user.Spec.EncryptedPassword = "China@2022"
 	if err != nil {
 		api.HandleBadRequest(resp, req, err)
 		return
@@ -521,7 +696,148 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 			return
 		}
 	}
+	operatorname := user.ObjectMeta.Annotations["kubesphere.io/creator"]
+	klog.Error("当前操作用户为:", operatorname)
+	operatoruser, err := h.im.DescribeUser(operatorname)
 
+	if err != nil {
+		klog.Error("=========查询用户信息为空======", err.Error())
+	}
+	if operatoruser != nil && operatoruser.Spec.OpTenantId != "" && operatoruser.Spec.OpCustomerId != "" && operatoruser.Spec.OpDeptId != "" {
+		klog.Error("========originalTenantId:", operatoruser.Spec.OpTenantId, ",originalCustomerId:", operatoruser.Spec.OpCustomerId, ",deptId:", operatoruser.Spec.OpDeptId, "==============")
+		//调用op新增用户接口
+		//JSON序列化
+		config := map[string]interface{}{}
+		//默认为非管理员
+		config["isAdmin"] = 0
+		//状态为启用
+		config["status"] = 1
+		//状态为启用
+		config["deptId"] = operatoruser.Spec.OpDeptId
+		//config["deptId"] = "1329701508497645570"
+
+		if user.ObjectMeta.Name != "" {
+			config["userName"] = user.ObjectMeta.Name
+			config["accountName"] = user.ObjectMeta.Name
+		}
+		config["sex"] = user.Spec.Sex
+		config["cellphone"] = user.Spec.Cellphone
+
+		configData, _ := json.Marshal(config)
+		param := bytes.NewBuffer([]byte(configData))
+		// only the user manager can modify the password without verifying the old password
+		// if old password is defined must be verified
+
+		opCreateReq, err := http.NewRequest("POST", CreateUserUrl, param)
+		if err != nil {
+			api.HandleInternalError(resp, req, err)
+			return
+		}
+		opCreateReq.Header.Set("Content-Type", "application/json")
+		opCreateReq.Header.Set("customer_id", operatoruser.Spec.OpCustomerId)
+		//opCreateReq.Header.Set("customer_id", "739865515899486208")
+		opCreateReq.Header.Set("tenant_id", operatoruser.Spec.OpTenantId)
+		//opCreateReq.Header.Set("tenant_id", "1329701507709116418")
+
+		defer opCreateReq.Body.Close()
+		client := http.Client{}
+		opResp, err := client.Do(opCreateReq) //Do 方法发送请求，返回 HTTP 回复
+		if err != nil {
+			klog.Error("=========调用op新增用户接口异常======", err.Error())
+			api.HandleInternalError(resp, req, err)
+			return
+		}
+		data, err := ioutil.ReadAll(opResp.Body)
+		if err != nil {
+			api.HandleInternalError(resp, req, err)
+			return
+		}
+		defer opResp.Body.Close()
+		var userCenterResp UserCenterResp
+		err = json.Unmarshal(data, &userCenterResp)
+		//if err != nil {
+		//	api.HandleInternalError(resp, req, err)
+		//	return
+		//}
+		if userCenterResp.Success == false {
+			var errorMessage string
+			if userCenterResp.Message != "" {
+				errorMessage = userCenterResp.Message
+			} else {
+				jsonByte, _ := json.Marshal(userCenterResp.Data)
+				errorMessage = string(jsonByte)
+			}
+			klog.Error("调用op新增用户接口失败:", errorMessage)
+
+			err = errors.NewInternalError(fmt.Errorf(errorMessage))
+			api.HandleInternalError(resp, req, err)
+			return
+		} else {
+			//如果成功获取到对应的id赋值给user
+			var userResp userResp
+			err = json.Unmarshal(data, &userResp)
+			opuid := userResp.Data
+			klog.Error("==========获取到返回的op用户uid为:", opuid, "=========")
+			user.Spec.Opuid = opuid
+			//查询用户信息
+			opUserInfoReq, err := http.NewRequest("GET", QueryUserInfoUrl+"/"+user.Spec.Opuid, nil)
+			if err != nil {
+				api.HandleInternalError(resp, req, err)
+				return
+			}
+			opUserInfoReq.Header.Set("Content-Type", "application/json")
+			opUserInfoReq.Header.Set("customer_id", operatoruser.Spec.OpCustomerId)
+			opUserInfoReq.Header.Set("tenant_id", operatoruser.Spec.OpTenantId)
+
+			client := http.Client{}
+			opResp, err := client.Do(opUserInfoReq) //Do 方法发送请求，返回 HTTP 回复
+			if err != nil {
+				klog.Error("=========调用op查询用户接口异常======", err.Error())
+				api.HandleInternalError(resp, req, err)
+				return
+			}
+			data, err := ioutil.ReadAll(opResp.Body)
+			if err != nil {
+				api.HandleInternalError(resp, req, err)
+				return
+			}
+			defer opResp.Body.Close()
+			var userCenterResp UserCenterResp
+			err = json.Unmarshal(data, &userCenterResp)
+			if userCenterResp.Success == false {
+				var errorMessage string
+				if userCenterResp.Message != "" {
+					errorMessage = userCenterResp.Message
+				} else {
+					jsonByte, _ := json.Marshal(userCenterResp.Data)
+					errorMessage = string(jsonByte)
+				}
+				klog.Error("调用op查询用户信息接口失败:", errorMessage)
+
+				err = errors.NewInternalError(fmt.Errorf(errorMessage))
+				api.HandleInternalError(resp, req, err)
+				return
+			} else {
+				mainId := userCenterResp.Data.MainId
+				userId := userCenterResp.Data.UserId
+				if mainId != "" {
+					user.Spec.OpTenantId = mainId
+				}
+				if userId != "" {
+					user.Spec.OpCustomerId = userId
+				}
+			}
+		}
+	} else {
+		klog.Error("==========查询用户op部分信息为空,新增的为超级管理员=========")
+	}
+
+	user.ObjectMeta.Finalizers = append(user.ObjectMeta.Finalizers, finalizer)
+	active := iamv1alpha2.UserActive
+	user.Status = iamv1alpha2.UserStatus{
+		State:              &active,
+		LastTransitionTime: &metav1.Time{Time: time.Now()},
+	}
 	created, err := h.im.CreateUser(&user)
 	if err != nil {
 		api.HandleError(resp, req, err)
@@ -533,6 +849,29 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 			api.HandleError(resp, req, err)
 			return
 		}
+	}
+	//如果是企业空间管理员还要自动绑定该用户到企业空间
+	//查询用户绑定角色
+	flag := false
+	userGlobalRole, _ := h.am.GetGlobalRoleOfUser(operatorname)
+	if userGlobalRole.Spec.ExtendFrom == "workspaces-manager" || userGlobalRole.Name == "workspaces-manager" {
+		flag = true
+	}
+	//需要绑定到对应的企业空间
+	if flag {
+		//查询当前用户绑定的企业空间
+		workspaceRoleBindings, _ := h.am.ListWorkspaceRoleBindings(operatoruser.GetName(), nil, "")
+		if len(workspaceRoleBindings) > 0 {
+			workspaceRoleBinding := workspaceRoleBindings[0]
+			workspaceName := strings.Split(workspaceRoleBinding.RoleRef.Name, "-")[0]
+			err := h.am.CreateUserWorkspaceRoleBinding(user.Name, workspaceName, workspaceName+"-viewer")
+
+			if err != nil {
+				api.HandleError(resp, req, err)
+				return
+			}
+		}
+
 	}
 
 	// ensure encrypted password will not be output
@@ -550,6 +889,15 @@ func (h *iamHandler) UpdateUser(request *restful.Request, response *restful.Resp
 	if err != nil {
 		api.HandleBadRequest(response, request, err)
 		return
+	}
+	if user.Spec.OpTenantId == "" {
+		operator, _ := apirequest.UserFrom(request.Request.Context())
+		if operator != nil {
+			operatoruser, _ := h.im.DescribeUser(operator.GetName())
+			if operatoruser != nil {
+				user.Spec.OpTenantId = operatoruser.Spec.OpTenantId
+			}
+		}
 	}
 
 	if username != user.Name {
@@ -581,7 +929,7 @@ func (h *iamHandler) UpdateUser(request *restful.Request, response *restful.Resp
 }
 
 func (h *iamHandler) ModifyPassword(request *restful.Request, response *restful.Response) {
-	username := request.PathParameter("user")
+	//username := request.PathParameter("user")
 	var passwordReset PasswordReset
 	err := request.ReadEntity(&passwordReset)
 	if err != nil {
@@ -611,30 +959,241 @@ func (h *iamHandler) ModifyPassword(request *restful.Request, response *restful.
 		return
 	}
 
+	//JSON序列化
+	config := map[string]interface{}{}
+	if passwordReset.CurrentPassword != "" {
+		config["password"] = passwordReset.CurrentPassword
+	}
+	if passwordReset.Password != "" {
+		config["newPassword"] = passwordReset.Password
+		config["newPasswordRepeat"] = passwordReset.Password
+	}
+	configData, _ := json.Marshal(config)
+	param := bytes.NewBuffer([]byte(configData))
 	// only the user manager can modify the password without verifying the old password
 	// if old password is defined must be verified
 	if decision != authorizer.DecisionAllow || passwordReset.CurrentPassword != "" {
-		if err = h.im.PasswordVerify(username, passwordReset.CurrentPassword); err != nil {
-			if err == auth.IncorrectPasswordError {
-				err = errors.NewBadRequest("incorrect old password")
-			}
-			api.HandleError(response, request, err)
+		opChangePwdReq, err := http.NewRequest("POST", ChangePasswordUrl, param)
+		if err != nil {
+			api.HandleInternalError(response, request, err)
 			return
+		}
+		opChangePwdReq.Header.Set("Content-Type", "application/json")
+		klog.Error("当前操作用户为:", operator.GetName())
+
+		operatorname := operator.GetName()
+		operatoruser, err := h.im.DescribeUser(operatorname)
+
+		if err != nil {
+			klog.Error("=========查询用户信息异常======", err.Error())
+			api.HandleInternalError(response, request, err)
+			return
+		}
+		if operatoruser == nil {
+			klog.Error("==========查询用户信息为空===========")
+			api.HandleError(response, request, fmt.Errorf("==========查询用户信息为空==========="))
+			return
+		}
+		if operatoruser.Spec.OpTenantId == "" || operatoruser.Spec.OpCustomerId == "" {
+			klog.Error("==========修改密码,获取当前登录用户为空===========")
+			api.HandleError(response, request, fmt.Errorf("==========修改密码,获取当前登录用户为空==========="))
+			return
+		}
+		klog.Error("========originalTenantId:", operatoruser.Spec.OpTenantId, ",originalCustomerId:", operatoruser.Spec.OpCustomerId, "==============")
+
+		opChangePwdReq.Header.Set("customer_id", operatoruser.Spec.OpCustomerId)
+		opChangePwdReq.Header.Set("tenant_id", operatoruser.Spec.OpTenantId)
+
+		defer opChangePwdReq.Body.Close()
+		client := http.Client{}
+		resp, err := client.Do(opChangePwdReq) //Do 方法发送请求，返回 HTTP 回复
+		if err != nil {
+			klog.Error("=========调用op修改密码接口异常======", err.Error())
+			api.HandleInternalError(response, request, err)
+			return
+		}
+		data, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			api.HandleInternalError(response, request, err)
+			return
+		}
+		defer resp.Body.Close()
+		var userResp UserCenterResp
+		err = json.Unmarshal(data, &userResp)
+		//if err != nil {
+		//	api.HandleInternalError(response, request, err)
+		//	return
+		//}
+		if userResp.Success == false {
+			klog.Error("调用op修改密码接口失败:", userResp.Message)
+			err = errors.NewInternalError(fmt.Errorf(userResp.Message))
+			api.HandleInternalError(response, request, err)
+			return
+		} else {
+			if operatoruser != nil && operatoruser.Spec.OpAccessToken != "" {
+				klog.Infof("======调用onepower的登出接口============")
+				opAcessToken := operatoruser.Spec.OpAccessToken
+				klog.Error("调用OP登出接口，opAccessToken:", opAcessToken)
+				opLogoutReq, err := http.NewRequest("GET", logoutUrl+"?token="+opAcessToken, nil)
+				tr := &http.Transport{
+					TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				}
+				client := &http.Client{
+					Transport: tr,
+				}
+				_, err = client.Do(opLogoutReq)
+
+				if err != nil {
+					klog.Error("=======调用OP的登出接口出错======, error: %v", err)
+					api.HandleInternalError(response, request, errors.NewInternalError(err))
+					return
+				} else {
+					klog.Infof("======调用onepower的登出接口成功============")
+
+				}
+			}
 		}
 	}
 
-	err = h.im.ModifyPassword(username, passwordReset.Password)
-	if err != nil {
-		api.HandleError(response, request, err)
-		return
-	}
-
 	response.WriteEntity(servererr.None)
+}
+func (h *iamHandler) ResetPassword(request *restful.Request, response *restful.Response) {
+	username := request.PathParameter("user")
+	user, _ := h.im.DescribeUser(username)
+	if user != nil {
+		opuid := user.Spec.Opuid
+		if opuid != "" {
+			//调用op的重置密码的接口
+			operator, _ := apirequest.UserFrom(request.Request.Context())
+			operatorname := operator.GetName()
+			operatoruser, err := h.im.DescribeUser(operatorname)
+			if err != nil {
+				klog.Error("=========查询用户信息异常======", err.Error())
+				api.HandleInternalError(response, request, err)
+				return
+			}
+			if operatoruser == nil {
+				klog.Error("==========查询用户信息为空===========")
+				api.HandleError(response, request, fmt.Errorf("==========查询用户信息为空==========="))
+				return
+			}
+			if operatoruser.Spec.OpTenantId == "" || operatoruser.Spec.OpCustomerId == "" {
+				klog.Error("==========重置密码,获取当前登录用户为空===========")
+				api.HandleError(response, request, fmt.Errorf("==========重置密码,获取当前登录用户为空==========="))
+				return
+			}
+			klog.Error("========originalTenantId:", operatoruser.Spec.OpTenantId, ",originalCustomerId:", operatoruser.Spec.OpCustomerId, "==============")
+			//调用op的删除用户接口
+			resetPasswordUrl := ResetUserPassword + "/" + opuid
+			opResetPasswordReq, err := http.NewRequest("POST", resetPasswordUrl, nil)
+			if err != nil {
+				api.HandleInternalError(response, request, err)
+				return
+			}
+			opResetPasswordReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			opResetPasswordReq.Header.Set("customer_id", operatoruser.Spec.OpCustomerId)
+			//opResetPasswordReq.Header.Set("customer_id", "739865515899486208")
+			opResetPasswordReq.Header.Set("tenant_id", operatoruser.Spec.OpTenantId)
+			//opResetPasswordReq.Header.Set("tenant_id", "1329701507709116418")
+			client := http.Client{}
+			resp, err := client.Do(opResetPasswordReq) //Do 方法发送请求，返回 HTTP 回复
+			if err != nil {
+				klog.Error("=========调用op重置密码接口异常======", err.Error())
+				api.HandleInternalError(response, request, err)
+				return
+			}
+			data, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				api.HandleInternalError(response, request, err)
+				return
+			}
+			defer resp.Body.Close()
+			var userResp UserCenterResp
+			err = json.Unmarshal(data, &userResp)
+			//if err != nil {
+			//	api.HandleInternalError(response, request, err)
+			//	return
+			//}
+			if userResp.Success == false {
+				klog.Error("调用op重置密码接口失败:", userResp.Message)
+				err = errors.NewInternalError(fmt.Errorf(userResp.Message))
+				api.HandleInternalError(response, request, err)
+				return
+			}
+		} else {
+			response.WriteEntity(servererr.New("该用户在op不存在,不可以重置密码"))
+			return
+		}
+
+	}
+	response.WriteEntity(servererr.None)
+
 }
 
 func (h *iamHandler) DeleteUser(request *restful.Request, response *restful.Response) {
 	username := request.PathParameter("user")
 
+	user, _ := h.im.DescribeUser(username)
+	if user != nil {
+		operator, _ := apirequest.UserFrom(request.Request.Context())
+		klog.Error("当前操作用户为:", operator.GetName())
+
+		operatorname := operator.GetName()
+		operatoruser, err := h.im.DescribeUser(operatorname)
+
+		if err != nil {
+			klog.Error("=========查询用户信息异常======", err.Error())
+			api.HandleInternalError(response, request, err)
+			return
+		}
+		if operatoruser == nil {
+			klog.Error("==========查询用户信息为空===========")
+			api.HandleError(response, request, fmt.Errorf("==========查询用户信息为空==========="))
+			return
+		}
+		if operatoruser.Spec.OpTenantId != "" || operatoruser.Spec.OpCustomerId != "" {
+			opuid := user.Spec.Opuid
+			if opuid != "" {
+				klog.Error("========获取用户的opuid为:", opuid, "==============")
+				//调用op的删除用户接口
+				deleteUrl := DeleteUserUrl + "/" + opuid
+				opDeleteUserReq, err := http.NewRequest("POST", deleteUrl, nil)
+				if err != nil {
+					api.HandleInternalError(response, request, err)
+					return
+				}
+				opDeleteUserReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+				opDeleteUserReq.Header.Set("customer_id", user.Spec.OpCustomerId)
+				//opDeleteUserReq.Header.Set("customer_id", "739865515899486208")
+				opDeleteUserReq.Header.Set("tenant_id", user.Spec.OpTenantId)
+				//opDeleteUserReq.Header.Set("tenant_id", "1329701507709116418")
+				client := http.Client{}
+				resp, err := client.Do(opDeleteUserReq) //Do 方法发送请求，返回 HTTP 回复
+				if err != nil {
+					klog.Error("=========调用op删除用户接口异常======", err.Error())
+					api.HandleInternalError(response, request, err)
+					return
+				}
+				data, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					api.HandleInternalError(response, request, err)
+					return
+				}
+				defer resp.Body.Close()
+				var userResp UserCenterResp
+				_ = json.Unmarshal(data, &userResp)
+				if userResp.Success == false {
+					klog.Error("调用op删除用户接口失败:", userResp.Message)
+					err = errors.NewInternalError(fmt.Errorf(userResp.Message))
+					api.HandleInternalError(response, request, err)
+					return
+				} else {
+					klog.Error("========<<删除op侧面用户成功<<=======")
+				}
+			}
+		}
+	}
 	err := h.im.DeleteUser(username)
 	if err != nil {
 		api.HandleError(response, request, err)
@@ -651,6 +1210,29 @@ func (h *iamHandler) CreateGlobalRole(request *restful.Request, response *restfu
 	if err != nil {
 		api.HandleBadRequest(response, request, err)
 		return
+	}
+	globalRole.Spec.IsDefault = ""
+	extendsfrom := globalRole.Spec.ExtendFrom
+	//如果是企业空间管理员
+	if extendsfrom == "workspaces-manager" {
+		aggregateRolesAnnotation := globalRole.Annotations[iamv1alpha2.AggregationRolesAnnotation]
+		pos := strings.Index(aggregateRolesAnnotation, "[") + 1
+		newstring := aggregateRolesAnnotation[:pos] + "\"role-template-manage-workspaces-newdefine\"," + aggregateRolesAnnotation[pos:]
+		globalRole.Annotations[iamv1alpha2.AggregationRolesAnnotation] = newstring
+	}
+
+	operator, _ := apirequest.UserFrom(request.Request.Context())
+	loginuser, _ := h.im.DescribeUser(operator.GetName())
+	opTenantId := globalRole.Spec.OpTenantId
+	if opTenantId == "" {
+		if loginuser != nil && loginuser.Spec.OpTenantId != "" {
+			globalRole.Spec.OpTenantId = loginuser.Spec.OpTenantId
+		}
+	}
+	if globalRole.Spec.Creator == "" {
+		if loginuser != nil && loginuser.Name != "" {
+			globalRole.Spec.Creator = loginuser.Name
+		}
 	}
 
 	created, err := h.am.CreateOrUpdateGlobalRole(&globalRole)
@@ -681,6 +1263,15 @@ func (h *iamHandler) UpdateGlobalRole(request *restful.Request, response *restfu
 	if err != nil {
 		api.HandleBadRequest(response, request, err)
 		return
+	}
+	globalRole.Spec.IsDefault = ""
+	extendsfrom := globalRole.Spec.ExtendFrom
+	//如果是企业空间管理员
+	if extendsfrom == "workspaces-manager" {
+		aggregateRolesAnnotation := globalRole.Annotations[iamv1alpha2.AggregationRolesAnnotation]
+		pos := strings.Index(aggregateRolesAnnotation, "[") + 1
+		newstring := aggregateRolesAnnotation[:pos] + "\"role-template-manage-workspaces-newdefine\"," + aggregateRolesAnnotation[pos:]
+		globalRole.Annotations[iamv1alpha2.AggregationRolesAnnotation] = newstring
 	}
 
 	if globalRoleName != globalRole.Name {
@@ -867,11 +1458,38 @@ func (h *iamHandler) CreateWorkspaceMembers(request *restful.Request, response *
 	}
 
 	for _, member := range members {
-		err := h.am.CreateUserWorkspaceRoleBinding(member.Username, workspace, member.RoleRef)
-		if err != nil {
-			api.HandleError(response, request, err)
-			return
+		if member.Operate == "bind" {
+			roleRef := ""
+			globalRole, _ := h.am.GetGlobalRoleOfUser(member.Username)
+			if globalRole != nil {
+				if globalRole.Spec.ExtendFrom != "" {
+					roleRef = globalRole.Spec.ExtendFrom
+				} else {
+					roleRef = globalRole.Name
+				}
+			} else {
+				roleRef = "platform-regular"
+			}
+
+			role := ""
+			if roleRef == "platform-regular" {
+				role = workspace + "-viewer"
+			} else {
+				role = workspace + "-admin"
+			}
+			err := h.am.CreateUserWorkspaceRoleBinding(member.Username, workspace, role)
+			if err != nil {
+				api.HandleError(response, request, err)
+				return
+			}
+		} else {
+			err := h.am.RemoveUserFromWorkspace(member.Username, workspace)
+			if err != nil {
+				api.HandleError(response, request, err)
+				return
+			}
 		}
+
 	}
 
 	response.WriteEntity(members)
@@ -1224,6 +1842,48 @@ func (h *iamHandler) updateGlobalRoleBinding(operator authuser.Info, user *iamv1
 	if err := h.am.CreateGlobalRoleBinding(user.Name, globalRole); err != nil {
 		klog.Error(err)
 		return err
+	}
+	//如果涉及到权限变更还需要调整对应的权限
+	newGlobalRole, _ := h.am.GetGlobalRole(globalRole)
+	newGlobalRoleSuperAuther := ""
+	if newGlobalRole.Spec.ExtendFrom != "" {
+		newGlobalRoleSuperAuther = newGlobalRole.Spec.ExtendFrom
+	} else {
+		newGlobalRoleSuperAuther = newGlobalRole.Name
+	}
+	globalRoleAuther := ""
+	if oldGlobalRole != nil {
+		if oldGlobalRole.Spec.ExtendFrom != "" {
+			globalRoleAuther = oldGlobalRole.Spec.ExtendFrom
+		} else {
+			globalRoleAuther = oldGlobalRole.Name
+		}
+	}
+
+	if newGlobalRoleSuperAuther != globalRoleAuther {
+		//需要做权限的变更
+		workspaceRoleBindings, _ := h.am.ListWorkspaceRoleBindings(user.Name, nil, "")
+		if len(workspaceRoleBindings) > 0 {
+			workspaceRoleBinding := workspaceRoleBindings[0]
+			workspaceRoleBindingName := workspaceRoleBinding.Name
+			username := strings.Split(workspaceRoleBindingName, "-")[0]
+			workspacename := strings.Split(workspaceRoleBindingName, "-")[1]
+			operator := strings.Split(workspaceRoleBindingName, "-")[2]
+			//删除现有的绑定关系
+			err = h.am.RemoveUserFromWorkspace(username, workspacename)
+			if err != nil {
+				return err
+			}
+			if operator == "admin" {
+				operator = "viewer"
+			} else {
+				operator = "admin"
+			}
+			err = h.am.CreateUserWorkspaceRoleBinding(username, workspacename, workspacename+"-"+operator)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

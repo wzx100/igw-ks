@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha3
 
 import (
+	iamv1alpha2 "kubesphere.io/api/iam/v1alpha2"
 	"sort"
 	"strings"
 
@@ -71,7 +72,20 @@ func DefaultList(objects []runtime.Object, q *query.Query, compareFunc CompareFu
 	})
 
 	total := len(filtered)
-
+	if len(filtered) > 0 {
+		var opGlobelRoleList iamv1alpha2.OpGlobelRoleList
+		for _, obj := range filtered {
+			// label matching selector, remove duplicate entity
+			item, ok := obj.(*iamv1alpha2.GlobalRole)
+			if ok {
+				opGlobelRoleList = append(opGlobelRoleList, item)
+			}
+		}
+		sort.Sort(opGlobelRoleList)
+		for index, item := range opGlobelRoleList {
+			filtered[index] = item
+		}
+	}
 	if q.Pagination == nil {
 		q.Pagination = query.NoPagination
 	}

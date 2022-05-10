@@ -20,6 +20,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"strings"
 )
 
 const (
@@ -68,24 +69,30 @@ const (
 	OriginUIDLabel                        = "iam.kubesphere.io/origin-uid"
 	ServiceAccountReferenceLabel          = "iam.kubesphere.io/serviceaccount-ref"
 	FieldEmail                            = "email"
-	ExtraEmail                            = FieldEmail
-	ExtraIdentityProvider                 = "idp"
-	ExtraUID                              = "uid"
-	ExtraUsername                         = "username"
-	ExtraDisplayName                      = "displayName"
-	ExtraUninitialized                    = "uninitialized"
-	InGroup                               = "ingroup"
-	NotInGroup                            = "notingroup"
-	AggregateTo                           = "aggregateTo"
-	ScopeWorkspace                        = "workspace"
-	ScopeCluster                          = "cluster"
-	ScopeNamespace                        = "namespace"
-	ScopeDevOps                           = "devops"
-	PlatformAdmin                         = "platform-admin"
-	NamespaceAdmin                        = "admin"
-	ClusterAdmin                          = "cluster-admin"
-	PreRegistrationUser                   = "system:pre-registration"
-	PreRegistrationUserGroup              = "pre-registration"
+	FieldIsDefault                        = "isDefault"
+	FieldOptenantId                       = "optenantid"
+	FieldWorkSpaceName                    = "workspacename"
+
+	FieldOptenantName        = "tenantname"
+	FieldOpuid               = "opuid"
+	ExtraEmail               = FieldEmail
+	ExtraIdentityProvider    = "idp"
+	ExtraUID                 = "uid"
+	ExtraUsername            = "username"
+	ExtraDisplayName         = "displayName"
+	ExtraUninitialized       = "uninitialized"
+	InGroup                  = "ingroup"
+	NotInGroup               = "notingroup"
+	AggregateTo              = "aggregateTo"
+	ScopeWorkspace           = "workspace"
+	ScopeCluster             = "cluster"
+	ScopeNamespace           = "namespace"
+	ScopeDevOps              = "devops"
+	PlatformAdmin            = "platform-admin"
+	NamespaceAdmin           = "admin"
+	ClusterAdmin             = "cluster-admin"
+	PreRegistrationUser      = "system:pre-registration"
+	PreRegistrationUserGroup = "pre-registration"
 )
 
 // +genclient
@@ -123,7 +130,16 @@ type UserSpec struct {
 	// +optional
 	DisplayName string `json:"displayName,omitempty"`
 	// +optional
-	Groups []string `json:"groups,omitempty"`
+	Groups          []string `json:"groups,omitempty"`
+	Sex             int      `json:"sex,omitempty"`
+	Cellphone       string   `json:"cellphone,omitempty"`
+	Opuid           string   `json:"opuid,omitempty"`
+	OpTenantId      string   `json:"optenantid,omitempty"`
+	OpCustomerId    string   `json:"opcustomerid,omitempty"`
+	OpDeptId        string   `json:"opdeptid,omitempty"`
+	OpAccessToken   string   `json:"opaccesstoken,omitempty"`
+	OpTenantName    string   `json:"opTenantName,omitempty"`
+	BelongWorkSpace string   `json:"belongworkspace,omitempty"`
 
 	// password will be encrypted by mutating admission webhook
 	// +kubebuilder:validation:MinLength=6
@@ -194,10 +210,42 @@ type GlobalRole struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              GolbalSpec `json:"spec"`
 
 	// Rules holds all the PolicyRules for this GlobalRole
 	// +optional
 	Rules []rbacv1.PolicyRule `json:"rules" protobuf:"bytes,2,rep,name=rules"`
+}
+type GolbalSpec struct {
+	// Unique email address(https://www.ietf.org/rfc/rfc5322.txt).
+	OpTenantId string `json:"optenantid,omitempty"`
+
+	OpTenantName string `json:"optenantname,omitempty"`
+	//继承角色名
+	ExtendFrom string `json:"extendFrom,omitempty"`
+
+	IsDefault string `json:"IsDefault"`
+	Creator   string `json:"creator"`
+}
+
+type OpGlobelRoleList []*GlobalRole
+
+func (I OpGlobelRoleList) Len() int {
+
+	return len(I)
+
+}
+
+func (I OpGlobelRoleList) Less(i, j int) bool {
+
+	return strings.Compare(I[i].Spec.IsDefault, I[j].Spec.IsDefault) > 0
+
+}
+
+func (I OpGlobelRoleList) Swap(i, j int) {
+
+	I[i], I[j] = I[j], I[i]
+
 }
 
 // +kubebuilder:object:root=true

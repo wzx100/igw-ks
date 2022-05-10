@@ -41,6 +41,8 @@ import (
 	fakenetworkv1alpha1 "kubesphere.io/kubesphere/pkg/client/clientset/versioned/typed/network/v1alpha1/fake"
 	notificationv2beta1 "kubesphere.io/kubesphere/pkg/client/clientset/versioned/typed/notification/v2beta1"
 	fakenotificationv2beta1 "kubesphere.io/kubesphere/pkg/client/clientset/versioned/typed/notification/v2beta1/fake"
+	optenantv1alpha1 "kubesphere.io/kubesphere/pkg/client/clientset/versioned/typed/optenant/v1alpha1"
+	fakeoptenantv1alpha1 "kubesphere.io/kubesphere/pkg/client/clientset/versioned/typed/optenant/v1alpha1/fake"
 	quotav1alpha2 "kubesphere.io/kubesphere/pkg/client/clientset/versioned/typed/quota/v1alpha2"
 	fakequotav1alpha2 "kubesphere.io/kubesphere/pkg/client/clientset/versioned/typed/quota/v1alpha2/fake"
 	servicemeshv1alpha2 "kubesphere.io/kubesphere/pkg/client/clientset/versioned/typed/servicemesh/v1alpha2"
@@ -160,6 +162,11 @@ func (c *Clientset) StorageV1alpha1() storagev1alpha1.StorageV1alpha1Interface {
 // TenantV1alpha1 retrieves the TenantV1alpha1Client
 func (c *Clientset) TenantV1alpha1() tenantv1alpha1.TenantV1alpha1Interface {
 	return &faketenantv1alpha1.FakeTenantV1alpha1{Fake: &c.Fake}
+}
+
+// OpTenantV1alpha1 retrieves the TenantV1alpha1Client
+func (c *Clientset) OpTenantV1alpha1() optenantv1alpha1.OpTenantV1alpha1Interface {
+	return &fakeoptenantv1alpha1.FakeOpTenantV1alpha1{Fake: &c.Fake}
 }
 
 // TenantV1alpha2 retrieves the TenantV1alpha2Client

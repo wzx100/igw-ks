@@ -115,9 +115,24 @@ func (a idaasIdentity) GetUserID() string {
 func (a idaasIdentity) GetUsername() string {
 	return a.Username
 }
+func (o idaasIdentity) GetOpAccessToken() string {
+	return ""
+}
 
 func (a idaasIdentity) GetEmail() string {
 	return a.Email
+}
+func (a idaasIdentity) GetOpuid() string {
+	return ""
+}
+func (o idaasIdentity) GetDeptid() string {
+	return ""
+}
+func (o idaasIdentity) GetCustomerId() string {
+	return ""
+}
+func (o idaasIdentity) GetTenantId() string {
+	return ""
 }
 
 func (a *aliyunIDaaS) IdentityExchangeCallback(req *http.Request) (identityprovider.Identity, error) {

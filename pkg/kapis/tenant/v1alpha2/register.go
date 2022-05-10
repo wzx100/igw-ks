@@ -17,15 +17,17 @@ limitations under the License.
 package v1alpha2
 
 import (
+	"kubesphere.io/kubesphere/pkg/models/iam/am"
+	"kubesphere.io/kubesphere/pkg/models/iam/im"
+	"kubesphere.io/kubesphere/pkg/models/optenant"
 	"net/http"
+
+	"kubesphere.io/kubesphere/pkg/models/metering"
 
 	"github.com/emicklei/go-restful"
 	restfulspec "github.com/emicklei/go-restful-openapi"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/kubernetes"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-
 	quotav1alpha2 "kubesphere.io/api/quota/v1alpha2"
 	tenantv1alpha2 "kubesphere.io/api/tenant/v1alpha2"
 
@@ -33,22 +35,13 @@ import (
 	auditingv1alpha1 "kubesphere.io/kubesphere/pkg/api/auditing/v1alpha1"
 	eventsv1alpha1 "kubesphere.io/kubesphere/pkg/api/events/v1alpha1"
 	loggingv1alpha2 "kubesphere.io/kubesphere/pkg/api/logging/v1alpha2"
-	"kubesphere.io/kubesphere/pkg/apiserver/authorization/authorizer"
 	"kubesphere.io/kubesphere/pkg/apiserver/runtime"
-	kubesphere "kubesphere.io/kubesphere/pkg/client/clientset/versioned"
 	"kubesphere.io/kubesphere/pkg/constants"
-	"kubesphere.io/kubesphere/pkg/informers"
 	"kubesphere.io/kubesphere/pkg/models"
-	"kubesphere.io/kubesphere/pkg/models/iam/am"
-	"kubesphere.io/kubesphere/pkg/models/metering"
 	"kubesphere.io/kubesphere/pkg/models/monitoring"
-	resourcev1alpha3 "kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/resource"
+	"kubesphere.io/kubesphere/pkg/models/tenant"
 	"kubesphere.io/kubesphere/pkg/server/errors"
-	"kubesphere.io/kubesphere/pkg/simple/client/auditing"
-	"kubesphere.io/kubesphere/pkg/simple/client/events"
-	"kubesphere.io/kubesphere/pkg/simple/client/logging"
 	meteringclient "kubesphere.io/kubesphere/pkg/simple/client/metering"
-	monitoringclient "kubesphere.io/kubesphere/pkg/simple/client/monitoring"
 )
 
 const (
@@ -61,14 +54,12 @@ func Resource(resource string) schema.GroupResource {
 	return GroupVersion.WithResource(resource).GroupResource()
 }
 
-func AddToContainer(c *restful.Container, factory informers.InformerFactory, k8sclient kubernetes.Interface,
-	ksclient kubesphere.Interface, evtsClient events.Client, loggingClient logging.Client,
-	auditingclient auditing.Client, am am.AccessManagementInterface, authorizer authorizer.Authorizer,
-	monitoringclient monitoringclient.Interface, cache cache.Cache, meteringOptions *meteringclient.Options, stopCh <-chan struct{}) error {
+func AddToContainer(am am.AccessManagementInterface, tenant tenant.Interface, opTenantGroup optenant.OpTenantOperator, im im.IdentityManagementInterface, c *restful.Container,
+	meteringOptions *meteringclient.Options) error {
 	mimePatch := []string{restful.MIME_JSON, runtime.MimeMergePatchJson, runtime.MimeJsonPatchJson}
 
 	ws := runtime.NewWebService(GroupVersion)
-	handler := NewTenantHandler(factory, k8sclient, ksclient, evtsClient, loggingClient, auditingclient, am, authorizer, monitoringclient, resourcev1alpha3.NewResourceGetter(factory, cache), meteringOptions, stopCh)
+	handler := newTenantHandler(am, tenant, opTenantGroup, im, meteringOptions)
 
 	ws.Route(ws.GET("/clusters").
 		To(handler.ListClusters).
@@ -77,21 +68,21 @@ func AddToContainer(c *restful.Container, factory informers.InformerFactory, k8s
 		Metadata(restfulspec.KeyOpenAPITags, []string{constants.UserResourceTag}))
 
 	ws.Route(ws.POST("/workspaces").
-		To(handler.CreateWorkspaceTemplate).
+		To(handler.CreateWorkspace).
 		Reads(tenantv1alpha2.WorkspaceTemplate{}).
 		Returns(http.StatusOK, api.StatusOK, tenantv1alpha2.WorkspaceTemplate{}).
 		Doc("Create workspace.").
 		Metadata(restfulspec.KeyOpenAPITags, []string{constants.WorkspaceTag}))
 
 	ws.Route(ws.DELETE("/workspaces/{workspace}").
-		To(handler.DeleteWorkspaceTemplate).
+		To(handler.DeleteWorkspace).
 		Param(ws.PathParameter("workspace", "workspace name")).
 		Returns(http.StatusOK, api.StatusOK, errors.None).
 		Doc("Delete workspace.").
 		Metadata(restfulspec.KeyOpenAPITags, []string{constants.WorkspaceTag}))
 
 	ws.Route(ws.PUT("/workspaces/{workspace}").
-		To(handler.UpdateWorkspaceTemplate).
+		To(handler.UpdateWorkspace).
 		Param(ws.PathParameter("workspace", "workspace name")).
 		Reads(tenantv1alpha2.WorkspaceTemplate{}).
 		Returns(http.StatusOK, api.StatusOK, tenantv1alpha2.WorkspaceTemplate{}).
@@ -99,7 +90,7 @@ func AddToContainer(c *restful.Container, factory informers.InformerFactory, k8s
 		Metadata(restfulspec.KeyOpenAPITags, []string{constants.WorkspaceTag}))
 
 	ws.Route(ws.PATCH("/workspaces/{workspace}").
-		To(handler.PatchWorkspaceTemplate).
+		To(handler.PatchWorkspace).
 		Param(ws.PathParameter("workspace", "workspace name")).
 		Consumes(mimePatch...).
 		Reads(tenantv1alpha2.WorkspaceTemplate{}).
@@ -108,13 +99,13 @@ func AddToContainer(c *restful.Container, factory informers.InformerFactory, k8s
 		Metadata(restfulspec.KeyOpenAPITags, []string{constants.WorkspaceTag}))
 
 	ws.Route(ws.GET("/workspaces").
-		To(handler.ListWorkspaceTemplates).
+		To(handler.ListWorkspaces).
 		Returns(http.StatusOK, api.StatusOK, models.PageableResponse{}).
 		Doc("List all workspaces that belongs to the current user").
 		Metadata(restfulspec.KeyOpenAPITags, []string{constants.WorkspaceTag}))
 
 	ws.Route(ws.GET("/workspaces/{workspace}").
-		To(handler.DescribeWorkspaceTemplate).
+		To(handler.DescribeWorkspace).
 		Param(ws.PathParameter("workspace", "workspace name")).
 		Returns(http.StatusOK, api.StatusOK, tenantv1alpha2.WorkspaceTemplate{}).
 		Doc("Describe workspace.").

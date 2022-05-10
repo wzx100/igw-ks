@@ -45,6 +45,10 @@ spec:
           spec:
             description: UserSpec defines the desired state of User
             properties:
+              belongworkspace:
+                type: string
+              cellphone:
+                type: string
               description:
                 description: Description of the user.
                 type: string
@@ -59,6 +63,18 @@ spec:
                 type: array
               lang:
                 description: The preferred written or spoken language for the user.
+                type: string
+              opTenantName:
+                type: string
+              opaccesstoken:
+                type: string
+              opcustomerid:
+                type: string
+              opdeptid:
+                type: string
+              optenantid:
+                type: string
+              opuid:
                 type: string
               password:
                 description: 'password will be encrypted by mutating admission webhook
@@ -82,6 +98,8 @@ spec:
                 minLength: 6
                 pattern: ^(.*[a-z].*[A-Z].*[0-9].*)$|^(.*[a-z].*[0-9].*[A-Z].*)$|^(.*[A-Z].*[a-z].*[0-9].*)$|^(.*[A-Z].*[0-9].*[a-z].*)$|^(.*[0-9].*[a-z].*[A-Z].*)$|^(.*[0-9].*[A-Z].*[a-z].*)$|^(\$2[ayb]\$.{56})$
                 type: string
+              sex:
+                type: integer
             required:
             - email
             type: object
