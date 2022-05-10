@@ -835,7 +835,7 @@ func (h *iamHandler) CreateUser(req *restful.Request, resp *restful.Response) {
 	user.ObjectMeta.Finalizers = append(user.ObjectMeta.Finalizers, finalizer)
 	active := iamv1alpha2.UserActive
 	user.Status = iamv1alpha2.UserStatus{
-		State:              &active,
+		State:              active,
 		LastTransitionTime: &metav1.Time{Time: time.Now()},
 	}
 	created, err := h.im.CreateUser(&user)

@@ -285,6 +285,7 @@ github.com/fatih/structs
 ## explicit
 github.com/form3tech-oss/jwt-go
 # github.com/fsnotify/fsnotify v1.4.9 => github.com/fsnotify/fsnotify v1.4.9
+## explicit
 github.com/fsnotify/fsnotify
 # github.com/garyburd/redigo v1.6.0 => github.com/garyburd/redigo v1.6.0
 ## explicit
@@ -505,9 +506,17 @@ github.com/kubernetes-csi/external-snapshotter/client/v4/informers/externalversi
 github.com/kubernetes-csi/external-snapshotter/client/v4/informers/externalversions/volumesnapshot/v1beta1
 github.com/kubernetes-csi/external-snapshotter/client/v4/listers/volumesnapshot/v1
 github.com/kubernetes-csi/external-snapshotter/client/v4/listers/volumesnapshot/v1beta1
+# github.com/kubesphere/pvc-autoresizer v0.1.1
+## explicit
+github.com/kubesphere/pvc-autoresizer/metrics
+github.com/kubesphere/pvc-autoresizer/runners
 # github.com/kubesphere/sonargo v0.0.2 => github.com/kubesphere/sonargo v0.0.2
 ## explicit
 github.com/kubesphere/sonargo/sonar
+# github.com/kubesphere/storageclass-accessor v0.2.0
+## explicit
+github.com/kubesphere/storageclass-accessor/client/apis/accessor/v1alpha1
+github.com/kubesphere/storageclass-accessor/webhook
 # github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 => github.com/lann/builder v0.0.0-20180802200727-47ae307949d0
 ## explicit
 github.com/lann/builder
@@ -1326,7 +1335,7 @@ istio.io/client-go/pkg/listers/security/v1beta1
 ## explicit
 istio.io/gogo-genproto/googleapis/google/api
 istio.io/gogo-genproto/googleapis/google/rpc
-# k8s.io/api v0.21.4 => k8s.io/api v0.21.2
+# k8s.io/api v0.22.1 => k8s.io/api v0.21.2
 ## explicit
 k8s.io/api/admission/v1
 k8s.io/api/admission/v1beta1
@@ -1915,7 +1924,7 @@ k8s.io/gengo/types
 ## explicit
 k8s.io/klog
 k8s.io/klog/klogr
-# k8s.io/klog/v2 v2.8.0 => k8s.io/klog/v2 v2.8.0
+# k8s.io/klog/v2 v2.9.0 => k8s.io/klog/v2 v2.8.0
 ## explicit
 k8s.io/klog/v2
 # k8s.io/kube-openapi v0.0.0-20210421082810-95288971da7e => k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7

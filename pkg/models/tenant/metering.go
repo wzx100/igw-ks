@@ -188,7 +188,7 @@ func (t *tenantOperator) makeQueryOptions(user user.Info, q meteringv1alpha1.Que
 			var wsList *api.ListResult
 			qu := query.New()
 			qu.LabelSelector = q.LabelSelector
-			wsList, err = t.ListWorkspaceTemplates(user, qu)
+			wsList, err = t.ListWorkspaces(user, qu)
 			if err != nil {
 				return qo, err
 			}
