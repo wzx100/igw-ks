@@ -20,7 +20,8 @@ WORKDIR /tmp
 RUN apk add --no-cache ca-certificates
 
 # Install helm
-ADD https://get.helm.sh/helm-${HELM_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz /tmp
+#ADD https://get.helm.sh/helm-${HELM_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz /tmp
+RUN wget https://repo.huaweicloud.com/helm/v3.5.2/helm-v3.5.2-linux-amd64.tar.gz -O /tmp/helm-v3.5.2-linux-amd64.tar.gz
 RUN tar xvzf /tmp/helm-${HELM_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz -C /tmp
 RUN mv /tmp/${TARGETOS}-${TARGETARCH}/helm ${OUTDIR}/usr/local/bin/
 
