@@ -979,7 +979,7 @@ func (h *iamHandler) ModifyPassword(request *restful.Request, response *restful.
 			return
 		}
 		opChangePwdReq.Header.Set("Content-Type", "application/json")
-		klog.Error("当前操作用户为:", operator.GetName())
+		klog.Info("当前操作用户为:", operator.GetName())
 
 		operatorname := operator.GetName()
 		operatoruser, err := h.im.DescribeUser(operatorname)
@@ -999,7 +999,7 @@ func (h *iamHandler) ModifyPassword(request *restful.Request, response *restful.
 			api.HandleError(response, request, fmt.Errorf("==========修改密码,获取当前登录用户为空==========="))
 			return
 		}
-		klog.Error("========originalTenantId:", operatoruser.Spec.OpTenantId, ",originalCustomerId:", operatoruser.Spec.OpCustomerId, "==============")
+		klog.Info("========originalTenantId:", operatoruser.Spec.OpTenantId, ",originalCustomerId:", operatoruser.Spec.OpCustomerId, "==============")
 
 		opChangePwdReq.Header.Set("customer_id", operatoruser.Spec.OpCustomerId)
 		opChangePwdReq.Header.Set("tenant_id", operatoruser.Spec.OpTenantId)
